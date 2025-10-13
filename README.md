@@ -2,6 +2,11 @@
 
 KuzuDot is a .NET client library for interacting with the [KùzuDB](https://kuzudb.com/) graph database.
 
+## Note
+This is still very alpha. I have a lot of documentation and examples to create.
+Lists, Structures, Maps are still not super fleshed out.
+Scalar types are pretty solid though.
+
 ## Features
 
 - Connect to Kùzu graph database instances
@@ -46,31 +51,3 @@ This project is licensed under the MIT License.
 ## Thread Safety
 
 No promises are made yet. It seems to work, but use at your own risk.
-
-
-## Performance Benchmarks
-
-The repository includes a `KuzuDot.Benchmarks` project using BenchmarkDotNet to track core hot paths:
-
-Covered scenarios:
-- Simple full table scan materialization
-- Scalar COUNT(*) query
-- Prepared statement create/bind/execute (cold)
-- Prepared statement reuse bind/execute (warm)
-- POCO enumeration materialization
-
-### Running Benchmarks
-
-Run all (Release recommended):
-```
-dotnet run -c Release --project KuzuDot.Benchmarks
-```
-
-Filter to a single benchmark:
-```
-dotnet run -c Release --project KuzuDot.Benchmarks -- --filter *PreparedReuseSingleBind*
-```
-
-Artifacts (Markdown/HTML/CSV) are emitted under:
-`KuzuDot.Benchmarks/BenchmarkDotNet.Artifacts/results` 
-(Note: this isn't true at the moment, they get emitted in the root solution folder...)
