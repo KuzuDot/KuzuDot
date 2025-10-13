@@ -1,0 +1,45 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Multi-target modern runtimes while preserving netstandard2.0 compatibility -->
+    <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+
+    <!-- Build quality / reproducibility -->
+    <Deterministic>true</Deterministic>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningLevel>4</WarningLevel>
+
+    <!-- Declare supported runtime identifiers (avoid empty-RID condition) -->
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    
+    <!-- Help with Visual Studio build compatibility -->
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
+    <DisableImplicitFrameworkReferences>false</DisableImplicitFrameworkReferences>
+  </PropertyGroup>
+
+  <!-- Ensure Release is optimized and doesn't emit debug info -->
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\native\win-x64\kuzu_shared.dll">
+      <!-- Present it under runtimes/win-x64/native in the output/package -->
+      <Link>runtimes\win-x64\native\kuzu_shared.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>true</Pack>
+      <PackagePath>runtimes/win-x64/native</PackagePath>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Analyzer package for improved IDisposable usage diagnostics -->
+    <PackageReference Include="IDisposableAnalyzers" Version="4.0.6" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+
+</Project>

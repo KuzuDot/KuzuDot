@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.15.4" />
+    <PackageReference Include="Microsoft.VisualStudio.DiagnosticsHub.BenchmarkDotNetDiagnosers" Version="18.0.36525.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\KuzuDot\KuzuDot.csproj" />
+  </ItemGroup>
+    <ItemGroup>
+        <None Include="..\..\native\win-x64\kuzu_shared.dll">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+  <Target Name="CopyNativeLibrariesForBenchmarks" BeforeTargets="Build">
+    <Copy SourceFiles="..\..\native\win-x64\kuzu_shared.dll" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>
