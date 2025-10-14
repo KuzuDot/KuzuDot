@@ -271,27 +271,62 @@ namespace KuzuDot
                 for (int c = 0; c < columnCount; c++)
                 {
                     using var value = row.GetValue((ulong)c);
-                    var colName = columnNames[c];
-                    if (propMap.TryGetValue(colName, out var prop))
+                    if (value.DataTypeId == KuzuDataTypeId.KuzuNode)
                     {
-                        try
+                        using KuzuNode aKuzuNode = (KuzuNode)KuzuNode.FromNative(value.NativePtr);
+                        //if(aKuzuNode.Label==typeof(T).Name) // use this to match Label to <T> typeName
+                        if (true)
                         {
-                            var converted = KuzuValue.ConvertKuzuValue(prop.PropertyType, value);
-                            prop.SetValue(instance, converted);
+                            foreach (var aProp in aKuzuNode.Properties)
+                            {
+                                if (propMap.TryGetValue(aProp.Key, out var propp))
+                                {
+                                    try
+                                    {
+                                        var converted = KuzuValue.ConvertKuzuValue(propp.PropertyType, aProp.Value);
+                                        propp.SetValue(instance, converted);
+                                    }
+                                    catch (System.InvalidCastException) { }
+                                    catch (System.FormatException) { }
+                                    continue;
+                                }
+                                if (fieldMap.TryGetValue(aProp.Key, out var fieldd))
+                                {
+                                    try
+                                    {
+                                        var converted = KuzuValue.ConvertKuzuValue(fieldd.FieldType, aProp.Value);
+                                        fieldd.SetValue(instance, converted);
+                                    }
+                                    catch (System.InvalidCastException) { }
+                                    catch (System.FormatException) { }
+                                }
+                            }
                         }
-                        catch (System.InvalidCastException) { }
-                        catch (System.FormatException) { }
-                        continue;
                     }
-                    if (fieldMap.TryGetValue(colName, out var field))
+                    else
                     {
-                        try
+                        var colName = columnNames[c];
+                        if (propMap.TryGetValue(colName, out var prop))
                         {
-                            var converted = KuzuValue.ConvertKuzuValue(field.FieldType, value);
-                            field.SetValue(instance, converted);
+                            try
+                            {
+                                var converted = KuzuValue.ConvertKuzuValue(prop.PropertyType, value);
+                                prop.SetValue(instance, converted);
+                            }
+                            catch (System.InvalidCastException) { }
+                            catch (System.FormatException) { }
+                            continue;
                         }
-                        catch (System.InvalidCastException) { }
-                        catch (System.FormatException) { }
+                        if (fieldMap.TryGetValue(colName, out var field))
+                        {
+                            try
+                            {
+                                var converted = KuzuValue.ConvertKuzuValue(field.FieldType, value);
+                                field.SetValue(instance, converted);
+                            }
+                            catch (System.InvalidCastException) { }
+                            catch (System.FormatException) { }
+                        }
                     }
                 }
                 list.Add(instance);
