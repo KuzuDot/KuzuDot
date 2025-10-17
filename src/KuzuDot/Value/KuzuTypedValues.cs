@@ -15,6 +15,10 @@ namespace KuzuDot.Value
     /// <typeparam name="T"></typeparam>
     public abstract class KuzuTypedValue<T> : KuzuValue
     {
+        internal KuzuTypedValue(IntPtr ptr) : base(ptr)
+        {
+        }
+
         internal KuzuTypedValue(NativeKuzuValue n) : base(n)
         {
         }
@@ -41,9 +45,13 @@ namespace KuzuDot.Value
         {
         }
 
+        internal KuzuBool(IntPtr ptr) : base(ptr)
+        {
+        }
+
         protected override bool TryGetNativeValue(out bool v)
         {
-            return NativeMethods.kuzu_value_get_bool(Handle, out v) == KuzuState.Success;
+            return NativeMethods.kuzu_value_get_bool(ref Handle.NativeStruct, out v) == KuzuState.Success;
         }
 
         public static bool FromKuzuBool(KuzuBool v)
@@ -65,9 +73,13 @@ namespace KuzuDot.Value
         {
         }
 
+        internal KuzuInt8(IntPtr ptr) : base(ptr)
+        {
+        }
+
         protected override bool TryGetNativeValue(out sbyte v)
         {
-            return NativeMethods.kuzu_value_get_int8(Handle, out v) == KuzuState.Success;
+            return NativeMethods.kuzu_value_get_int8(ref Handle.NativeStruct, out v) == KuzuState.Success;
         }
 
         public static sbyte FromKuzuInt8(KuzuInt8 v)
@@ -85,9 +97,13 @@ namespace KuzuDot.Value
         {
         }
 
+        internal KuzuInt16(IntPtr ptr) : base(ptr)
+        {
+        }
+
         protected override bool TryGetNativeValue(out short v)
         {
-            return NativeMethods.kuzu_value_get_int16(Handle, out v) == KuzuState.Success;
+            return NativeMethods.kuzu_value_get_int16(ref Handle.NativeStruct, out v) == KuzuState.Success;
         }
 
         public static short FromKuzuInt16(KuzuInt16 v)
@@ -105,9 +121,13 @@ namespace KuzuDot.Value
         {
         }
 
+        internal KuzuInt32(IntPtr ptr) : base(ptr)
+        {
+        }
+
         protected override bool TryGetNativeValue(out int v)
         {
-            return NativeMethods.kuzu_value_get_int32(Handle, out v) == KuzuState.Success;
+            return NativeMethods.kuzu_value_get_int32(ref Handle.NativeStruct, out v) == KuzuState.Success;
         }
 
         public static int FromKuzuInt32(KuzuInt32 v)
@@ -125,9 +145,13 @@ namespace KuzuDot.Value
         {
         }
 
+        internal KuzuInt64(IntPtr ptr) : base(ptr)
+        {
+        }
+
         protected override bool TryGetNativeValue(out long v)
         {
-            return NativeMethods.kuzu_value_get_int64(Handle, out v) == KuzuState.Success;
+            return NativeMethods.kuzu_value_get_int64(ref Handle.NativeStruct, out v) == KuzuState.Success;
         }
 
         public static long FromKuzuInt64(KuzuInt64 v)
@@ -135,6 +159,7 @@ namespace KuzuDot.Value
             KuzuGuard.NotNull(v, nameof(v));
             return v.Value;
         }
+
         public static implicit operator long(KuzuInt64 value) => FromKuzuInt64(value);
     }
 
@@ -144,9 +169,13 @@ namespace KuzuDot.Value
         {
         }
 
+        internal KuzuUInt8(IntPtr ptr) : base(ptr)
+        {
+        }
+
         protected override bool TryGetNativeValue(out byte v)
         {
-            return NativeMethods.kuzu_value_get_uint8(Handle, out v) == KuzuState.Success;
+            return NativeMethods.kuzu_value_get_uint8(ref Handle.NativeStruct, out v) == KuzuState.Success;
         }
 
         public static byte FromKuzuUInt8(KuzuUInt8 v)
@@ -164,9 +193,13 @@ namespace KuzuDot.Value
         {
         }
 
+        internal KuzuUInt16(IntPtr ptr) : base(ptr)
+        {
+        }
+
         protected override bool TryGetNativeValue(out ushort v)
         {
-            return NativeMethods.kuzu_value_get_uint16(Handle, out v) == KuzuState.Success;
+            return NativeMethods.kuzu_value_get_uint16(ref Handle.NativeStruct, out v) == KuzuState.Success;
         }
 
         public static ushort FromKuzuUInt16(KuzuUInt16 v)
@@ -184,9 +217,13 @@ namespace KuzuDot.Value
         {
         }
 
+        internal KuzuUInt32(IntPtr ptr) : base(ptr)
+        {
+        }
+
         protected override bool TryGetNativeValue(out uint v)
         {
-            return NativeMethods.kuzu_value_get_uint32(Handle, out v) == KuzuState.Success;
+            return NativeMethods.kuzu_value_get_uint32(ref Handle.NativeStruct, out v) == KuzuState.Success;
         }
 
         public static uint FromKuzuUInt32(KuzuUInt32 v)
@@ -204,9 +241,13 @@ namespace KuzuDot.Value
         {
         }
 
+        internal KuzuUInt64(IntPtr ptr) : base(ptr)
+        {
+        }
+
         protected override bool TryGetNativeValue(out ulong v)
         {
-            return NativeMethods.kuzu_value_get_uint64(Handle, out v) == KuzuState.Success;
+            return NativeMethods.kuzu_value_get_uint64(ref Handle.NativeStruct, out v) == KuzuState.Success;
         }
 
         public static ulong FromKuzuUInt64(KuzuUInt64 v)
@@ -224,9 +265,13 @@ namespace KuzuDot.Value
         {
         }
 
+        internal KuzuFloat(IntPtr ptr) : base(ptr)
+        {
+        }
+
         protected override bool TryGetNativeValue(out float v)
         {
-            return NativeMethods.kuzu_value_get_float(Handle, out v) == KuzuState.Success;
+            return NativeMethods.kuzu_value_get_float(ref Handle.NativeStruct, out v) == KuzuState.Success;
         }
 
         public static float FromKuzuFloat(KuzuFloat v)
@@ -244,9 +289,13 @@ namespace KuzuDot.Value
         {
         }
 
+        internal KuzuDouble(IntPtr ptr) : base(ptr)
+        {
+        }
+
         protected override bool TryGetNativeValue(out double v)
         {
-            return NativeMethods.kuzu_value_get_double(Handle, out v) == KuzuState.Success;
+            return NativeMethods.kuzu_value_get_double(ref Handle.NativeStruct, out v) == KuzuState.Success;
         }
 
         public static double FromKuzuDouble(KuzuDouble v)
@@ -260,13 +309,17 @@ namespace KuzuDot.Value
 
     public sealed class KuzuString : KuzuTypedValue<string>
     {
+        internal KuzuString(IntPtr ptr) : base(ptr)
+        {
+        }
+
         internal KuzuString(NativeKuzuValue n) : base(n)
         {
         }
 
         protected override bool TryGetNativeValue(out string v)
         {
-            var st = NativeMethods.kuzu_value_get_string(Handle, out var ptr);
+            var st = NativeMethods.kuzu_value_get_string(ref Handle.NativeStruct, out var ptr);
             if (st == KuzuState.Success)
             {
                 v = NativeUtil.PtrToStringAndDestroy(ptr, NativeMethods.kuzu_destroy_string);
@@ -291,9 +344,13 @@ namespace KuzuDot.Value
         {
         }
 
+        internal KuzuInternalId(IntPtr ptr) : base(ptr)
+        {
+        }
+
         protected override bool TryGetNativeValue(out InternalId v)
         {
-            var st = NativeMethods.kuzu_value_get_internal_id(Handle, out var temp);
+            var st = NativeMethods.kuzu_value_get_internal_id(ref Handle.NativeStruct, out var temp);
             if (st == KuzuState.Success)
             {
                 v = new InternalId(temp.TableId, temp.Offset);
@@ -318,9 +375,13 @@ namespace KuzuDot.Value
         {
         }
 
+        internal KuzuInt128(IntPtr ptr) : base(ptr)
+        {
+        }
+
         protected override bool TryGetNativeValue(out BigInteger v)
         {
-            var st = NativeMethods.kuzu_value_get_int128(Handle, out var native);
+            var st = NativeMethods.kuzu_value_get_int128(ref Handle.NativeStruct, out var native);
             if (st == KuzuState.Success)
             {
                 v = NativeUtil.NativeToBigInteger(native);
@@ -345,9 +406,13 @@ namespace KuzuDot.Value
         {
         }
 
+        internal KuzuInterval(IntPtr ptr) : base(ptr)
+        {
+        }
+
         protected override bool TryGetNativeValue(out TimeSpan value)
         {
-            var st = NativeMethods.kuzu_value_get_interval(Handle, out var iv);
+            var st = NativeMethods.kuzu_value_get_interval(ref Handle.NativeStruct, out var iv);
             if (st == KuzuState.Success)
             {
                 value = DateTimeUtilities.NativeIntervalToTimeSpan(iv);

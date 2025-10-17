@@ -8,60 +8,56 @@ using System.Runtime.InteropServices;
 
 namespace KuzuDot.Value
 {
-    /// <summary>Factory methods for creating KuzuDB values.</summary>
+    /// <summary>
+    /// Factory methods for creating KuzuDB values.
+    /// </summary>
     public static class KuzuValueFactory
     {
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("IDisposableAnalyzers.Correctness", "IDISP001:Dispose created", Justification = "Factory: Caller must dispose")]
-        public static KuzuAny CreateNull()
-        {
-            var ptr = NativeMethods.kuzu_value_create_null();
-            KuzuGuard.AssertNotZero(ptr, "Failed to create null value");
-            return new KuzuAny(new(ptr, false));
-        }
+        public static KuzuAny CreateNull() => new (NativeMethods.kuzu_value_create_null());
 
-        public static KuzuBool CreateBool(bool value) => (KuzuBool)KuzuValue.FromNative(NativeMethods.kuzu_value_create_bool(value));
+        public static KuzuBool CreateBool(bool value) => new (NativeMethods.kuzu_value_create_bool(value));
 
-        public static KuzuInt8 CreateInt8(sbyte value) => (KuzuInt8)KuzuValue.FromNative(NativeMethods.kuzu_value_create_int8(value));
+        public static KuzuInt8 CreateInt8(sbyte value) => new (NativeMethods.kuzu_value_create_int8(value));
 
-        public static KuzuInt16 CreateInt16(short value) => (KuzuInt16)KuzuValue.FromNative(NativeMethods.kuzu_value_create_int16(value));
+        public static KuzuInt16 CreateInt16(short value) => new (NativeMethods.kuzu_value_create_int16(value));
 
-        public static KuzuInt32 CreateInt32(int value) => (KuzuInt32)KuzuValue.FromNative(NativeMethods.kuzu_value_create_int32(value));
+        public static KuzuInt32 CreateInt32(int value) => new (NativeMethods.kuzu_value_create_int32(value));
 
-        public static KuzuInt64 CreateInt64(long value) => (KuzuInt64)KuzuValue.FromNative(NativeMethods.kuzu_value_create_int64(value));
+        public static KuzuInt64 CreateInt64(long value) => new(NativeMethods.kuzu_value_create_int64(value));
 
-        public static KuzuUInt8 CreateUInt8(byte value) => (KuzuUInt8)KuzuValue.FromNative(NativeMethods.kuzu_value_create_uint8(value));
+        public static KuzuUInt8 CreateUInt8(byte value) => new(NativeMethods.kuzu_value_create_uint8(value));
 
-        public static KuzuUInt16 CreateUInt16(ushort value) => (KuzuUInt16)KuzuValue.FromNative(NativeMethods.kuzu_value_create_uint16(value));
+        public static KuzuUInt16 CreateUInt16(ushort value) => new(NativeMethods.kuzu_value_create_uint16(value));
 
-        public static KuzuUInt32 CreateUInt32(uint value) => (KuzuUInt32)KuzuValue.FromNative(NativeMethods.kuzu_value_create_uint32(value));
+        public static KuzuUInt32 CreateUInt32(uint value) => new(NativeMethods.kuzu_value_create_uint32(value));
 
-        public static KuzuUInt64 CreateUInt64(ulong value) => (KuzuUInt64)KuzuValue.FromNative(NativeMethods.kuzu_value_create_uint64(value));
+        public static KuzuUInt64 CreateUInt64(ulong value) => new(NativeMethods.kuzu_value_create_uint64(value));
 
-        internal static KuzuInt128 CreateInt128Internal(NativeKuzuInt128 value) => (KuzuInt128)KuzuValue.FromNative(NativeMethods.kuzu_value_create_int128(value));
+        internal static KuzuInt128 CreateInt128Internal(NativeKuzuInt128 value) => new(NativeMethods.kuzu_value_create_int128(value));
 
-        public static KuzuFloat CreateFloat(float value) => (KuzuFloat)KuzuValue.FromNative(NativeMethods.kuzu_value_create_float(value));
+        public static KuzuFloat CreateFloat(float value) => new(NativeMethods.kuzu_value_create_float(value));
 
-        public static KuzuDouble CreateDouble(double value) => (KuzuDouble)KuzuValue.FromNative(NativeMethods.kuzu_value_create_double(value));
+        public static KuzuDouble CreateDouble(double value) => new(NativeMethods.kuzu_value_create_double(value));
 
-        public static KuzuInternalId CreateInternalId(InternalId value) => (KuzuInternalId)KuzuValue.FromNative(NativeMethods.kuzu_value_create_internal_id(value.ToNative()));
+        public static KuzuInternalId CreateInternalId(InternalId value) => new (NativeMethods.kuzu_value_create_internal_id(value.ToNative()));
 
-        internal static KuzuDate CreateDateInternal(NativeKuzuDate value) => (KuzuDate)KuzuValue.FromNative(NativeMethods.kuzu_value_create_date(value));
+        internal static KuzuDate CreateDateInternal(NativeKuzuDate value) => new (NativeMethods.kuzu_value_create_date(value));
 
         public static KuzuDate CreateDate(DateTime dateTime) => CreateDateInternal(DateTimeUtilities.DateTimeToKuzuDate(dateTime));
 
-        public static KuzuTimestamp CreateTimestamp(DateTime dateTime) => (KuzuTimestamp)KuzuValue.FromNative(NativeMethods.kuzu_value_create_timestamp(DateTimeUtilities.DateTimeToNativeTimestamp(dateTime)));
+        public static KuzuTimestamp CreateTimestamp(DateTime dateTime) => new (NativeMethods.kuzu_value_create_timestamp(DateTimeUtilities.DateTimeToNativeTimestamp(dateTime)));
 
-        public static KuzuTimestamp CreateTimestampFromUnixMicros(long micros) => (KuzuTimestamp)KuzuValue.FromNative(NativeMethods.kuzu_value_create_timestamp(new NativeKuzuTimestamp(micros)));
+        public static KuzuTimestamp CreateTimestampFromUnixMicros(long micros) => new (NativeMethods.kuzu_value_create_timestamp(new NativeKuzuTimestamp(micros)));
 
-        public static KuzuTimestampNs CreateTimestampNanoseconds(long nanos) => (KuzuTimestampNs)KuzuValue.FromNative(NativeMethods.kuzu_value_create_timestamp_ns(new NativeKuzuTimestampNs(nanos)));
+        public static KuzuTimestampNs CreateTimestampNanoseconds(long nanos) => new (NativeMethods.kuzu_value_create_timestamp_ns(new NativeKuzuTimestampNs(nanos)));
 
-        public static KuzuTimestampMs CreateTimestampMilliseconds(long millis) => (KuzuTimestampMs)KuzuValue.FromNative(NativeMethods.kuzu_value_create_timestamp_ms(new NativeKuzuTimestampMs(millis)));
+        public static KuzuTimestampMs CreateTimestampMilliseconds(long millis) => new (NativeMethods.kuzu_value_create_timestamp_ms(new NativeKuzuTimestampMs(millis)));
 
-        public static KuzuTimestampSec CreateTimestampSeconds(long seconds) => (KuzuTimestampSec)KuzuValue.FromNative(NativeMethods.kuzu_value_create_timestamp_sec(new NativeKuzuTimestampSec(seconds)));
+        public static KuzuTimestampSec CreateTimestampSeconds(long seconds) => new (NativeMethods.kuzu_value_create_timestamp_sec(new NativeKuzuTimestampSec(seconds)));
 
-        public static KuzuTimestampTz CreateTimestampWithTimeZoneMicros(long microsUtc) => (KuzuTimestampTz)KuzuValue.FromNative(NativeMethods.kuzu_value_create_timestamp_tz(new NativeKuzuTimestampTz(microsUtc)));
+        public static KuzuTimestampTz CreateTimestampWithTimeZoneMicros(long microsUtc) => new (NativeMethods.kuzu_value_create_timestamp_tz(new NativeKuzuTimestampTz(microsUtc)));
 
-        public static KuzuInterval CreateInterval(TimeSpan span) => (KuzuInterval)KuzuValue.FromNative(NativeMethods.kuzu_value_create_interval(DateTimeUtilities.TimeSpanToNativeInterval(span)));
+        public static KuzuInterval CreateInterval(TimeSpan span) => new (NativeMethods.kuzu_value_create_interval(DateTimeUtilities.TimeSpanToNativeInterval(span)));
 
         public static KuzuString CreateString(string? value)
         {
@@ -81,9 +77,7 @@ namespace KuzuDot.Value
             }
             finally { Marshal.FreeHGlobal(unmanaged); }
 
-            // Wrap the native string
-            var sv = (KuzuString)KuzuValue.FromNative(nativePtr);
-            return sv;
+            return new (nativePtr);
         }
 
         public static KuzuList CreateList(params KuzuValue?[] elements)
@@ -114,8 +108,8 @@ namespace KuzuDot.Value
                 }
             }
             finally { if (elemsPtr != IntPtr.Zero) Marshal.FreeHGlobal(elemsPtr); }
-            var list = (KuzuList)KuzuValue.FromNative(outValPtr);
-            return list;
+
+            return new (outValPtr);
         }
 
         public static KuzuStruct CreateStruct(params (string Name, KuzuValue? Value)[] fields)
@@ -160,8 +154,8 @@ namespace KuzuDot.Value
                 if (namesPtr != IntPtr.Zero) Marshal.FreeHGlobal(namesPtr);
                 if (valuesPtr != IntPtr.Zero) Marshal.FreeHGlobal(valuesPtr);
             }
-            var sv = (KuzuStruct)KuzuValue.FromNative(outValPtr);
-            return sv;
+
+            return new (outValPtr);
         }
 
         public static KuzuMap CreateMap(KuzuValue?[] keys, KuzuValue?[] values)
@@ -205,8 +199,8 @@ namespace KuzuDot.Value
                 if (keysPtr != IntPtr.Zero) Marshal.FreeHGlobal(keysPtr);
                 if (valuesPtr != IntPtr.Zero) Marshal.FreeHGlobal(valuesPtr);
             }
-            var mv = (KuzuMap)KuzuValue.FromNative(outValPtr);
-            return mv;
+
+            return new KuzuMap(outValPtr);
         }
 
         public static KuzuInt128 CreateInt128(BigInteger value)

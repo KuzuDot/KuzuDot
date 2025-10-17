@@ -18,10 +18,25 @@ namespace KuzuDot.Native
 
 
         // Database functions
+        /// <summary>
+        /// Allocates memory and creates a kuzu database instance at database_path with
+        /// bufferPoolSize=buffer_pool_size. Caller is responsible for calling kuzu_database_destroy() to
+        /// release the allocated memory.
+        /// </summary>
+        /// <param name="databasePath">The path to the database.</param>
+        /// <param name="systemConfig">The runtime configuration for creating or opening the database.</param>
+        /// <param name="outDatabase">The output parameter that will hold the database instance.</param>
+        /// <returns>The state indicating the success or failure of the operation.</returns>
+        /// <remarks>Original C signature: KUZU_C_API kuzu_state kuzu_database_init(const char* database_path, kuzu_system_config system_config, kuzu_database* out_database);</remarks>
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern KuzuState kuzu_database_init([MarshalAs(UnmanagedType.LPStr)] string databasePath,
             NativeKuzuSystemConfig systemConfig, out NativeKuzuDatabase outDatabase);
 
+        /// <summary>
+        /// Destroys the kuzu database instance and frees the allocated memory.
+        /// </summary>
+        /// <param name="database">The database instance to destroy.</param>
+        /// <remarks>Original C signature: KUZU_C_API void kuzu_database_destroy(kuzu_database* database);</remarks>
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         internal static extern void kuzu_database_destroy(ref NativeKuzuDatabase database);
 
@@ -149,7 +164,7 @@ namespace KuzuDot.Native
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern KuzuState kuzu_prepared_statement_bind_value(ref NativeKuzuPreparedStatement preparedStatement,
-            [MarshalAs(UnmanagedType.LPStr)] string paramName, SafeHandle value);
+            [MarshalAs(UnmanagedType.LPStr)] string paramName, IntPtr value);
 
         // Query Result functions
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
@@ -331,176 +346,176 @@ namespace KuzuDot.Native
         // Value accessor functions
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         [return: MarshalAs(UnmanagedType.I1)]
-        internal static extern bool kuzu_value_is_null(SafeHandle value);
+        internal static extern bool kuzu_value_is_null(ref NativeKuzuValue value);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern void kuzu_value_set_null(SafeHandle value, bool isNull);
+        internal static extern void kuzu_value_set_null(ref NativeKuzuValue value, bool isNull);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern void kuzu_value_get_data_type(IntPtr value, out NativeKuzuLogicalType outType);
+        internal static extern void kuzu_value_get_data_type(ref NativeKuzuValue value, out NativeKuzuLogicalType outType);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_bool(SafeHandle value, out bool outResult);
+        internal static extern KuzuState kuzu_value_get_bool(ref NativeKuzuValue value, out bool outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_int8(SafeHandle value, out sbyte outResult);
+        internal static extern KuzuState kuzu_value_get_int8(ref NativeKuzuValue value, out sbyte outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_int16(SafeHandle value, out short outResult);
+        internal static extern KuzuState kuzu_value_get_int16(ref NativeKuzuValue value, out short outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_int32(SafeHandle value, out int outResult);
+        internal static extern KuzuState kuzu_value_get_int32(ref NativeKuzuValue value, out int outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_int64(SafeHandle value, out long outResult);
+        internal static extern KuzuState kuzu_value_get_int64(ref NativeKuzuValue value, out long outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_uint8(SafeHandle value, out byte outResult);
+        internal static extern KuzuState kuzu_value_get_uint8(ref NativeKuzuValue value, out byte outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_uint16(SafeHandle value, out ushort outResult);
+        internal static extern KuzuState kuzu_value_get_uint16(ref NativeKuzuValue value, out ushort outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_uint32(SafeHandle value, out uint outResult);
+        internal static extern KuzuState kuzu_value_get_uint32(ref NativeKuzuValue value, out uint outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_uint64(SafeHandle value, out ulong outResult);
+        internal static extern KuzuState kuzu_value_get_uint64(ref NativeKuzuValue value, out ulong outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_int128(SafeHandle value, out NativeKuzuInt128 outResult);
+        internal static extern KuzuState kuzu_value_get_int128(ref NativeKuzuValue value, out NativeKuzuInt128 outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_float(SafeHandle value, out float outResult);
+        internal static extern KuzuState kuzu_value_get_float(ref NativeKuzuValue value, out float outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_double(SafeHandle value, out double outResult);
+        internal static extern KuzuState kuzu_value_get_double(ref NativeKuzuValue value, out double outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_internal_id(SafeHandle value, out NativeKuzuInternalId outResult);
+        internal static extern KuzuState kuzu_value_get_internal_id(ref NativeKuzuValue value, out NativeKuzuInternalId outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_date(SafeHandle value, out NativeKuzuDate outResult);
+        internal static extern KuzuState kuzu_value_get_date(ref NativeKuzuValue value, out NativeKuzuDate outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_timestamp(SafeHandle value, out NativeKuzuTimestamp outResult);
+        internal static extern KuzuState kuzu_value_get_timestamp(ref NativeKuzuValue value, out NativeKuzuTimestamp outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_timestamp_ns(SafeHandle value, out NativeKuzuTimestampNs outResult);
+        internal static extern KuzuState kuzu_value_get_timestamp_ns(ref NativeKuzuValue value, out NativeKuzuTimestampNs outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_timestamp_ms(SafeHandle value, out NativeKuzuTimestampMs outResult);
+        internal static extern KuzuState kuzu_value_get_timestamp_ms(ref NativeKuzuValue value, out NativeKuzuTimestampMs outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_timestamp_sec(SafeHandle value, out NativeKuzuTimestampSec outResult);
+        internal static extern KuzuState kuzu_value_get_timestamp_sec(ref NativeKuzuValue value, out NativeKuzuTimestampSec outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_timestamp_tz(SafeHandle value, out NativeKuzuTimestampTz outResult);
+        internal static extern KuzuState kuzu_value_get_timestamp_tz(ref NativeKuzuValue value, out NativeKuzuTimestampTz outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_interval(SafeHandle value, out NativeKuzuInterval outResult);
+        internal static extern KuzuState kuzu_value_get_interval(ref NativeKuzuValue value, out NativeKuzuInterval outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_string(SafeHandle value, out IntPtr outResult);
+        internal static extern KuzuState kuzu_value_get_string(ref NativeKuzuValue value, out IntPtr outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_blob(SafeHandle value, out IntPtr outResult);
+        internal static extern KuzuState kuzu_value_get_blob(ref NativeKuzuValue value, out IntPtr outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_decimal_as_string(SafeHandle value, out IntPtr outResult);
+        internal static extern KuzuState kuzu_value_get_decimal_as_string(ref NativeKuzuValue value, out IntPtr outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_uuid(SafeHandle value, out IntPtr outResult);
+        internal static extern KuzuState kuzu_value_get_uuid(ref NativeKuzuValue value, out IntPtr outResult);
 
         // List/Array functions
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_list_size(SafeHandle value, out ulong outResult);
+        internal static extern KuzuState kuzu_value_get_list_size(ref NativeKuzuValue value, out ulong outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_list_element(SafeHandle value, ulong index, out NativeKuzuValue outValue);
+        internal static extern KuzuState kuzu_value_get_list_element(ref NativeKuzuValue value, ulong index, out NativeKuzuValue outValue);
 
         // Struct functions
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_struct_num_fields(SafeHandle value, out ulong outResult);
+        internal static extern KuzuState kuzu_value_get_struct_num_fields(ref NativeKuzuValue value, out ulong outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_struct_field_name(SafeHandle value, ulong index, out IntPtr outResult);
+        internal static extern KuzuState kuzu_value_get_struct_field_name(ref NativeKuzuValue value, ulong index, out IntPtr outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_struct_field_value(SafeHandle value, ulong index, out NativeKuzuValue outValue);
+        internal static extern KuzuState kuzu_value_get_struct_field_value(ref NativeKuzuValue value, ulong index, out NativeKuzuValue outValue);
 
         // Map functions
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_map_size(SafeHandle value, out ulong outResult);
+        internal static extern KuzuState kuzu_value_get_map_size(ref NativeKuzuValue value, out ulong outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_map_key(SafeHandle value, ulong index, out NativeKuzuValue outKey);
+        internal static extern KuzuState kuzu_value_get_map_key(ref NativeKuzuValue value, ulong index, out NativeKuzuValue outKey);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_map_value(SafeHandle value, ulong index, out NativeKuzuValue outValue);
+        internal static extern KuzuState kuzu_value_get_map_value(ref NativeKuzuValue value, ulong index, out NativeKuzuValue outValue);
 
         // Recursive rel functions
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_recursive_rel_node_list(SafeHandle value, out NativeKuzuValue outValue);
+        internal static extern KuzuState kuzu_value_get_recursive_rel_node_list(ref NativeKuzuValue value, out NativeKuzuValue outValue);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_value_get_recursive_rel_rel_list(SafeHandle value, out NativeKuzuValue outValue);
+        internal static extern KuzuState kuzu_value_get_recursive_rel_rel_list(ref NativeKuzuValue value, out NativeKuzuValue outValue);
 
         // Node value helpers
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_node_val_get_id_val(SafeHandle nodeVal, out NativeKuzuValue outValue);
+        internal static extern KuzuState kuzu_node_val_get_id_val(ref NativeKuzuValue nodeVal, out NativeKuzuValue outValue);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_node_val_get_label_val(SafeHandle nodeVal, out NativeKuzuValue outValue);
+        internal static extern KuzuState kuzu_node_val_get_label_val(ref NativeKuzuValue nodeVal, out NativeKuzuValue outValue);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_node_val_get_property_size(SafeHandle nodeVal, out ulong outValue);
+        internal static extern KuzuState kuzu_node_val_get_property_size(ref NativeKuzuValue nodeVal, out ulong outValue);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_node_val_get_property_name_at(SafeHandle nodeVal, ulong index, out IntPtr outResult);
+        internal static extern KuzuState kuzu_node_val_get_property_name_at(ref NativeKuzuValue nodeVal, ulong index, out IntPtr outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_node_val_get_property_value_at(SafeHandle nodeVal, ulong index, out NativeKuzuValue outValue);
+        internal static extern KuzuState kuzu_node_val_get_property_value_at(ref NativeKuzuValue nodeVal, ulong index, out NativeKuzuValue outValue);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_node_val_to_string(SafeHandle nodeVal, out IntPtr outResult);
+        internal static extern KuzuState kuzu_node_val_to_string(ref NativeKuzuValue nodeVal, out IntPtr outResult);
 
         // Rel value helpers
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_rel_val_get_id_val(SafeHandle relVal, out NativeKuzuValue outValue);
+        internal static extern KuzuState kuzu_rel_val_get_id_val(ref NativeKuzuValue relVal, out NativeKuzuValue outValue);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_rel_val_get_src_id_val(SafeHandle relVal, out NativeKuzuValue outValue);
+        internal static extern KuzuState kuzu_rel_val_get_src_id_val(ref NativeKuzuValue relVal, out NativeKuzuValue outValue);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_rel_val_get_dst_id_val(SafeHandle relVal, out NativeKuzuValue outValue);
+        internal static extern KuzuState kuzu_rel_val_get_dst_id_val(ref NativeKuzuValue relVal, out NativeKuzuValue outValue);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_rel_val_get_label_val(SafeHandle relVal, out NativeKuzuValue outValue);
+        internal static extern KuzuState kuzu_rel_val_get_label_val(ref NativeKuzuValue relVal, out NativeKuzuValue outValue);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_rel_val_get_property_size(SafeHandle relVal, out ulong outValue);
+        internal static extern KuzuState kuzu_rel_val_get_property_size(ref NativeKuzuValue relVal, out ulong outValue);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_rel_val_get_property_name_at(SafeHandle relVal, ulong index, out IntPtr outResult);
+        internal static extern KuzuState kuzu_rel_val_get_property_name_at(ref NativeKuzuValue relVal, ulong index, out IntPtr outResult);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_rel_val_get_property_value_at(SafeHandle relVal, ulong index, out NativeKuzuValue outValue);
+        internal static extern KuzuState kuzu_rel_val_get_property_value_at(ref NativeKuzuValue relVal, ulong index, out NativeKuzuValue outValue);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern KuzuState kuzu_rel_val_to_string(SafeHandle relVal, out IntPtr outResult);
+        internal static extern KuzuState kuzu_rel_val_to_string(ref NativeKuzuValue relVal, out IntPtr outResult);
 
         // Value utility functions
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern IntPtr kuzu_value_clone(SafeHandle value);
+        internal static extern IntPtr kuzu_value_clone(ref NativeKuzuValue value);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern void kuzu_value_copy(SafeHandle value, SafeHandle other);
+        internal static extern void kuzu_value_copy(ref NativeKuzuValue value, IntPtr other);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         internal static extern void kuzu_value_destroy(IntPtr value);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern IntPtr kuzu_value_to_string(SafeHandle value);
+        internal static extern IntPtr kuzu_value_to_string(ref NativeKuzuValue value);
 
         // Int128 utility functions
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]

@@ -8,6 +8,8 @@ namespace KuzuDot.Value
     public sealed class KuzuBlob : KuzuValue
     {
         internal KuzuBlob(NativeKuzuValue n) : base(n) { }
+
+        internal KuzuBlob(IntPtr ptr) : base(ptr) { }
         /// <summary>
         /// Returns the blob contents as a newly allocated managed byte array.
         /// Prefer <see cref="GetSpan()"/> when you only need to read the data transiently without allocation.
@@ -15,7 +17,7 @@ namespace KuzuDot.Value
         public byte[] GetBytes()
         {
             ThrowIfDisposed();
-            var st = NativeMethods.kuzu_value_get_blob(Handle, out var ptr);
+            var st = NativeMethods.kuzu_value_get_blob(ref Handle.NativeStruct, out var ptr);
             if (st != KuzuState.Success) { PerfCounters.IncBlobDecode(); throw new InvalidOperationException("Failed to get blob value"); }
             if (ptr == IntPtr.Zero) return [];
 
@@ -49,7 +51,7 @@ namespace KuzuDot.Value
         {
             ThrowIfDisposed();
 
-            var st = NativeMethods.kuzu_value_get_blob(Handle, out var ptr);
+            var st = NativeMethods.kuzu_value_get_blob(ref Handle.NativeStruct, out var ptr);
             KuzuGuard.CheckSuccess(st, "Failed to get blob value");
             if (ptr == IntPtr.Zero)
             {

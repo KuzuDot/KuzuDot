@@ -15,13 +15,17 @@ namespace KuzuDot.Value
             get
             {
                 ThrowIfDisposed();
-                var st = NativeMethods.kuzu_value_get_map_size(Handle, out var sz);
+                var st = NativeMethods.kuzu_value_get_map_size(ref Handle.NativeStruct, out var sz);
                 KuzuGuard.CheckSuccess(st, "Failed to get map size");
                 return sz;
             }
         }
 
         internal KuzuMap(NativeKuzuValue n) : base(n)
+        {
+        }
+
+        internal KuzuMap(IntPtr ptr) : base(ptr)
         {
         }
 
@@ -42,18 +46,18 @@ namespace KuzuDot.Value
         {
             ValidateIndex(index);
             ThrowIfDisposed();
-            var st = NativeMethods.kuzu_value_get_map_key(Handle, index, out var h);
+            var st = NativeMethods.kuzu_value_get_map_key(ref Handle.NativeStruct, index, out var h);
             KuzuGuard.CheckSuccess(st, $"Failed to get map key at index {index}");
-            return FromNative(h);
+            return FromNativeStruct(h);
         }
 
         public KuzuValue GetValueAt(ulong index)
         {
             ValidateIndex(index);
             ThrowIfDisposed();
-            var st = NativeMethods.kuzu_value_get_map_value(Handle, index, out var h);
+            var st = NativeMethods.kuzu_value_get_map_value(ref Handle.NativeStruct, index, out var h);
             KuzuGuard.CheckSuccess(st, $"Failed to get map value at index {index}");
-            return FromNative(h);
+            return FromNativeStruct(h);
         }
 
         private void ValidateIndex(ulong index)

@@ -9,7 +9,7 @@ namespace KuzuDot.Value
         internal KuzuUUID(NativeKuzuValue n) : base(n) { }
         protected override bool TryGetNativeValue(out UUID value)
         {
-            var st = NativeMethods.kuzu_value_get_uuid(Handle, out var ptr);
+            var st = NativeMethods.kuzu_value_get_uuid(ref Handle.NativeStruct, out var ptr);
             if (st == Enums.KuzuState.Success) {
                 value = new UUID(NativeUtil.PtrToStringAndDestroy(ptr, NativeMethods.kuzu_destroy_string));
                 return true;

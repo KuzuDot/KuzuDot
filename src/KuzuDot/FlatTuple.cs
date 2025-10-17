@@ -28,7 +28,6 @@ namespace KuzuDot
             _handle.Dispose();
         }
 
-        // optional reference for name-based indexing
         /// <summary>
         /// Gets the value at the specified index (returned instance is an appropriate concrete subclass of KuzuValue).
         /// </summary>
@@ -38,7 +37,7 @@ namespace KuzuDot
             var state = NativeMethods.kuzu_flat_tuple_get_value(ref _handle.NativeStruct, index, out var kuzuValue);
             KuzuGuard.CheckSuccess(state, $"Failed to get value at index {index}. Native result: {state}");
             KuzuGuard.AssertNotZero(kuzuValue.Value, $"Retrieved null handle for value at index {index}");
-            return KuzuValue.FromNative(kuzuValue);
+            return KuzuValue.FromNativeStruct(kuzuValue);
         }
 
         /// <summary>

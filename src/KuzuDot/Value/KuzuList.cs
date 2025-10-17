@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 
 namespace KuzuDot.Value
 {
@@ -24,12 +25,16 @@ namespace KuzuDot.Value
         protected virtual ulong FetchCount()
         {
             ThrowIfDisposed();
-            var st = NativeMethods.kuzu_value_get_list_size(Handle, out var cnt);
+            var st = NativeMethods.kuzu_value_get_list_size(ref Handle.NativeStruct, out var cnt);
             KuzuGuard.CheckSuccess(st, "Failed to get list size");
             return cnt;
         }
 
         internal KuzuList(NativeKuzuValue n) : base(n)
+        {
+        }
+
+        internal KuzuList(IntPtr ptr) : base(ptr)
         {
         }
 
@@ -61,9 +66,9 @@ namespace KuzuDot.Value
         {
             ValidateIndex(index);
             ThrowIfDisposed();
-            var st = NativeMethods.kuzu_value_get_list_element(Handle, index, out var h);
+            var st = NativeMethods.kuzu_value_get_list_element(ref Handle.NativeStruct, index, out var h);
             KuzuGuard.CheckSuccess(st, $"Failed to get list element at index {index}");
-            return FromNative(h);
+            return FromNativeStruct(h);
         }
 
         public IEnumerator<KuzuValue> GetEnumerator()
