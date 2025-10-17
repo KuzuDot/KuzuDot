@@ -29,8 +29,7 @@ namespace KuzuDot
         {
             get
             {
-                var s = AsStruct();
-                return NativeMethods.kuzu_query_result_get_num_columns(ref s);
+                return NativeMethods.kuzu_query_result_get_num_columns(ref _handle.NativeStruct);
             }
         }
 
@@ -39,8 +38,7 @@ namespace KuzuDot
         {
             get
             {
-                var s = AsStruct();
-                var ptr = NativeMethods.kuzu_query_result_get_error_message(ref s);
+                var ptr = NativeMethods.kuzu_query_result_get_error_message(ref _handle.NativeStruct);
                 if (ptr == IntPtr.Zero) return null;
                 return NativeUtil.PtrToStringAndDestroy(ptr, NativeMethods.kuzu_destroy_string);
             }
@@ -50,8 +48,7 @@ namespace KuzuDot
         {
             get
             {
-                var s = AsStruct();
-                return NativeMethods.kuzu_query_result_is_success(ref s);
+                return NativeMethods.kuzu_query_result_is_success(ref _handle.NativeStruct);
             }
         }
 
@@ -60,8 +57,7 @@ namespace KuzuDot
             get
             {
                 ThrowIfDisposed();
-                var s = AsStruct();
-                return NativeMethods.kuzu_query_result_get_num_tuples(ref s);
+                return NativeMethods.kuzu_query_result_get_num_tuples(ref _handle.NativeStruct);
             }
         }
 
@@ -80,8 +76,7 @@ namespace KuzuDot
         public DataType GetColumnDataType(ulong index)
         {
             ThrowIfDisposed();
-            var s = AsStruct();
-            var state = NativeMethods.kuzu_query_result_get_column_data_type(ref s, index, out var nativeType);
+            var state = NativeMethods.kuzu_query_result_get_column_data_type(ref _handle.NativeStruct, index, out var nativeType);
             KuzuGuard.CheckSuccess(state, "Failed to get column data type");
             return new DataType(nativeType);
         }
@@ -89,8 +84,7 @@ namespace KuzuDot
 
         public string GetColumnName(ulong index)
         {
-            var s = AsStruct();
-            var state = NativeMethods.kuzu_query_result_get_column_name(ref s, index, out var namePtr);
+            var state = NativeMethods.kuzu_query_result_get_column_name(ref _handle.NativeStruct, index, out var namePtr);
             KuzuGuard.CheckSuccess(state, "Failed to get column name");
             return NativeUtil.PtrToStringAndDestroy(namePtr, NativeMethods.kuzu_destroy_string);
         }
@@ -99,8 +93,7 @@ namespace KuzuDot
         {
             ThrowIfDisposed();
             if (!HasNext()) throw new InvalidOperationException("No more tuples available");
-            var s = AsStruct();
-            var state = NativeMethods.kuzu_query_result_get_next(ref s, out var tupleHandle);
+            var state = NativeMethods.kuzu_query_result_get_next(ref _handle.NativeStruct, out var tupleHandle);
             KuzuGuard.CheckSuccess(state, "Failed to get next tuple");
             var ft = new FlatTuple(tupleHandle, this) { Size = ColumnCount };
             KuzuDot.Utils.PerfCounters.IncTuple();
@@ -111,8 +104,7 @@ namespace KuzuDot
         {
             ThrowIfDisposed();
 
-            var s = AsStruct();
-            var state = NativeMethods.kuzu_query_result_get_next_query_result(ref s, out var next);
+            var state = NativeMethods.kuzu_query_result_get_next_query_result(ref _handle.NativeStruct, out var next);
             KuzuGuard.CheckSuccess(state, "Failed to get next query result");
             return new QueryResult(next);
         }
@@ -121,8 +113,7 @@ namespace KuzuDot
         {
             ThrowIfDisposed();
 
-            var s = AsStruct();
-            var state = NativeMethods.kuzu_query_result_get_query_summary(ref s, out var summaryHandle);
+            var state = NativeMethods.kuzu_query_result_get_query_summary(ref _handle.NativeStruct, out var summaryHandle);
             KuzuGuard.CheckSuccess(state, "Failed to get query summary");
             return new QuerySummary(summaryHandle);
         }
@@ -130,24 +121,20 @@ namespace KuzuDot
         public bool HasNext()
         {
             ThrowIfDisposed();
-            var s = AsStruct();
-            return NativeMethods.kuzu_query_result_has_next(ref s);
+            return NativeMethods.kuzu_query_result_has_next(ref _handle.NativeStruct);
         }
 
         public bool HasNextQueryResult()
         {
             ThrowIfDisposed();
 
-            var s = AsStruct();
-            return NativeMethods.kuzu_query_result_has_next_query_result(ref s);
+            return NativeMethods.kuzu_query_result_has_next_query_result(ref _handle.NativeStruct);
         }
 
         public void ResetIterator()
         {
             ThrowIfDisposed();
-
-            var s = AsStruct();
-            NativeMethods.kuzu_query_result_reset_iterator(ref s);
+            NativeMethods.kuzu_query_result_reset_iterator(ref _handle.NativeStruct);
         }
 
         public override string ToString()
@@ -155,8 +142,7 @@ namespace KuzuDot
             if (_handle.IsInvalid) return "QueryResult(Disposed)";
             try
             {
-                var s = AsStruct();
-                var strPtr = NativeMethods.kuzu_query_result_to_string(ref s);
+                var strPtr = NativeMethods.kuzu_query_result_to_string(ref _handle.NativeStruct);
                 var basic = NativeUtil.PtrToStringAndDestroy(strPtr, NativeMethods.kuzu_destroy_string);
                 return $"QueryResult(Rows={RowCount}, Cols={ColumnCount})\n" + basic;
             }
@@ -170,8 +156,7 @@ namespace KuzuDot
         {
             ThrowIfDisposed();
 
-            var s = AsStruct();
-            var state = NativeMethods.kuzu_query_result_get_arrow_schema(ref s, out schema);
+            var state = NativeMethods.kuzu_query_result_get_arrow_schema(ref _handle.NativeStruct, out schema);
             return state == KuzuState.Success;
         }
 
@@ -179,8 +164,7 @@ namespace KuzuDot
         {
             ThrowIfDisposed();
 
-            var s = AsStruct();
-            var state = NativeMethods.kuzu_query_result_get_next_arrow_chunk(ref s, chunkSize, out array);
+            var state = NativeMethods.kuzu_query_result_get_next_arrow_chunk(ref _handle.NativeStruct, chunkSize, out array);
             return state == KuzuState.Success;
         }
 
@@ -208,12 +192,6 @@ namespace KuzuDot
                 }
             }
             ordinal = 0; return false;
-        }
-
-        private NativeKuzuQueryResult AsStruct()
-        { 
-            // TODO: move struct to safehandle.
-            return new NativeKuzuQueryResult(_handle.RawHandle, _handle.IsOwnedByCpp);
         }
 
         private void BuildColumnNameCache()
@@ -251,8 +229,8 @@ namespace KuzuDot
         {
             if (disposing)
             {
-                var native = AsStruct();
-                NativeMethods.kuzu_query_result_destroy(ref native);
+                if (_handle.IsInvalid) return;
+                NativeMethods.kuzu_query_result_destroy(ref _handle.NativeStruct);
                 _handle.Dispose();
             }
         }
@@ -293,11 +271,11 @@ namespace KuzuDot
 
         private sealed class QueryResultSafeHandle : KuzuSafeHandle
         {
-            internal bool IsOwnedByCpp;
+            internal NativeKuzuQueryResult NativeStruct;
 
             internal QueryResultSafeHandle(IntPtr ptr, bool isOwnedByCpp) : base("QueryResult")
             {
-                IsOwnedByCpp = isOwnedByCpp;
+                NativeStruct = new NativeKuzuQueryResult(ptr, isOwnedByCpp);
                 Initialize(ptr);
             }
 
