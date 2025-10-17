@@ -244,7 +244,7 @@ namespace KuzuDot
             ThrowIfDisposed();
             KuzuGuard.NotNullOrEmpty(paramName, nameof(paramName));
             KuzuGuard.NotNull(value, nameof(value));
-            var result = NativeMethods.kuzu_prepared_statement_bind_value(ref _handle.NativeStruct, paramName, value.Handle);
+            var result = NativeMethods.kuzu_prepared_statement_bind_value(ref _handle.NativeStruct, paramName, value.NativePtr);
             value.Dispose();
             KuzuGuard.CheckSuccess(result, $"Failed to bind value parameter '{paramName}': {GetErrorMessageSafe()}");
             return this;

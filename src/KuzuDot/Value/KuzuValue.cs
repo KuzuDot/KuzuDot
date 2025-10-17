@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace KuzuDot.Value
 {
@@ -27,7 +28,7 @@ namespace KuzuDot.Value
             get
             {
                 ThrowIfDisposed();
-                NativeMethods.kuzu_value_get_data_type(NativePtr, out var t);
+                NativeMethods.kuzu_value_get_data_type(ref Handle.NativeStruct, out var t);
                 return NativeMethods.kuzu_data_type_get_id(ref t);
             }
         }
@@ -36,9 +37,14 @@ namespace KuzuDot.Value
 
         internal IntPtr NativePtr => _handle.DangerousGetHandle();
 
-        internal KuzuValue(NativeKuzuValue n)
+        internal KuzuValue(IntPtr ptr)
         {
-            _handle.Init(n);
+            _handle.Init(ptr);
+        }
+
+        internal KuzuValue(NativeKuzuValue nativeStruct)
+        {
+            _handle.Init(nativeStruct);
         }
 
         public KuzuValue Clone()
@@ -46,7 +52,7 @@ namespace KuzuDot.Value
             lock (_lockObject)
             {
                 ThrowIfDisposed();
-                var clonePtr = NativeMethods.kuzu_value_clone(_handle);
+                var clonePtr = NativeMethods.kuzu_value_clone(ref Handle.NativeStruct);
                 KuzuGuard.AssertNotZero(clonePtr, "Failed to clone value");
                 return WrapOwned(clonePtr);
             }
@@ -61,7 +67,7 @@ namespace KuzuDot.Value
                 other.ThrowIfDisposed();
                 if (DataTypeId != other.DataTypeId)
                     throw new ArgumentException("Cannot copy from value of different type", nameof(other));
-                NativeMethods.kuzu_value_copy(_handle, other.Handle);
+                NativeMethods.kuzu_value_copy(ref Handle.NativeStruct, other.NativePtr);
             }
         }
 
@@ -74,7 +80,7 @@ namespace KuzuDot.Value
         public bool IsNull()
         {
             ThrowIfDisposed();
-            return NativeMethods.kuzu_value_is_null(_handle);
+            return NativeMethods.kuzu_value_is_null(ref Handle.NativeStruct);
         }
 
         public void SetNull(bool isNull)
@@ -82,7 +88,7 @@ namespace KuzuDot.Value
             lock (_lockObject)
             {
                 ThrowIfDisposed();
-                NativeMethods.kuzu_value_set_null(_handle, isNull);
+                NativeMethods.kuzu_value_set_null(ref Handle.NativeStruct, isNull);
             }
         }
 
@@ -90,7 +96,7 @@ namespace KuzuDot.Value
         {
             if (_handle.IsInvalid) return "[Invalid KuzuValue]";
             ThrowIfDisposed();
-            var ptr = NativeMethods.kuzu_value_to_string(_handle);
+            var ptr = NativeMethods.kuzu_value_to_string(ref Handle.NativeStruct);
             return NativeUtil.PtrToStringAndDestroy(ptr, NativeMethods.kuzu_destroy_string);
         }
 
@@ -121,27 +127,24 @@ namespace KuzuDot.Value
             return Convert.ChangeType(str, target, System.Globalization.CultureInfo.InvariantCulture)!;
         }
 
-        private static KuzuValue FromBorrowed(NativeKuzuValue raw)
-        {
-            //Make a deep copy of the value to make sure we don't hold a borrowed reference
-            int size = Marshal.SizeOf<NativeKuzuValue>();
-            var wrapperPtr = Marshal.AllocHGlobal(size);
-            Marshal.StructureToPtr(raw, wrapperPtr, false);
-            return WrapFromHandle(new(wrapperPtr, false));
+        //private static KuzuValue FromBorrowed(NativeKuzuValue raw)
+        //{
+        //    ////Make a shallow copy of the kuzu_value; C++ will destroy this
+        //    //int size = Marshal.SizeOf<NativeKuzuValue>();
+        //    //var wrapperPtr = Marshal.AllocHGlobal(size);
+        //    //Marshal.StructureToPtr(raw, wrapperPtr, false);
+        //    return WrapNativeStruct(raw); // new(wrapperPtr, false));
+        //}
 
-            // Not sure why this doesn't work
-            //var outPtr = NativeMethods.kuzu_value_clone(raw.Value);
-            //return WrapFromHandle(new KuzuValueSafeHandle(new(outPtr, true)));
-        }
-
-        internal static KuzuValue FromNative(IntPtr raw)
+        internal static KuzuValue FromNativePtr(IntPtr raw)
         {
             return WrapOwned(raw);
         }
 
-        internal static KuzuValue FromNative(NativeKuzuValue raw)
+        internal static KuzuValue FromNativeStruct(NativeKuzuValue raw)
         {
-            return (!raw.IsOwnedByCpp) ? WrapOwned(raw.Value) : FromBorrowed(raw);
+            return WrapNativeStruct(raw);
+            //return (!raw.IsOwnedByCpp) ? WrapOwned(raw) : FromBorrowed(raw);
         }
 
         protected virtual void Dispose(bool disposing)
@@ -152,16 +155,42 @@ namespace KuzuDot.Value
             }
         }
 
+        ////public bool Is<T>() where T : struct
+        ////{
+        ////    return this.DataTypeId switch
+        ////    {
+        ////        KuzuDataTypeId.KuzuBool when typeof(T) == typeof(bool) => true,
+        ////        KuzuDataTypeId.KuzuInt8 when typeof(T) == typeof(sbyte) => true,
+        ////        KuzuDataTypeId.KuzuInt16 when typeof(T) == typeof(short) => true,
+        ////        KuzuDataTypeId.KuzuInt32 when typeof(T) == typeof(int) => true,
+        ////        KuzuDataTypeId.KuzuInt64 when typeof(T) == typeof(long) => true,
+        ////        KuzuDataTypeId.KuzuUInt8 when typeof(T) == typeof(byte) => true,
+        ////        KuzuDataTypeId.KuzuUInt16 when typeof(T) == typeof(ushort) => true,
+        ////        KuzuDataTypeId.KuzuUInt32 when typeof(T) == typeof(uint) => true,
+        ////        KuzuDataTypeId.KuzuUInt64 when typeof(T) == typeof(ulong) => true,
+        ////        KuzuDataTypeId.KuzuFloat when typeof(T) == typeof(float) => true,
+        ////        KuzuDataTypeId.KuzuDouble when typeof(T) == typeof(double) => true,
+        ////        KuzuDataTypeId.KuzuDecimal when typeof(T) == typeof(decimal) => true,
+        ////        KuzuDataTypeId.KuzuInt128 when typeof(T) == typeof(System.Numerics.BigInteger) => true,
+        ////        KuzuDataTypeId.KuzuDate when typeof(T) == typeof(DateTime) => true, // TODO: if .net 2.0 vs 8 logic
+        ////        KuzuDataTypeId.KuzuTimestamp when typeof(T) == typeof(DateTime) => true,
+        ////        KuzuDataTypeId.KuzuInterval when typeof(T) == typeof(TimeSpan) => true,
+        ////        KuzuDataTypeId.KuzuString when typeof(T) == typeof(string) => true,
+        ////        KuzuDataTypeId.KuzuUUID when typeof(T) == typeof(UUID) => true,
+        ////        _ => false,
+        ////    };
+        ////}
+
         protected void ThrowIfDisposed()
         {
             KuzuGuard.NotDisposed(_handle.IsInvalid, GetType().Name);
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "Caller must dispose")]
-        private static KuzuValue WrapFromHandle(NativeKuzuValue nativeStruct)
+        private static KuzuValue WrapNativeStruct(NativeKuzuValue nativeStruct)
         {
             if (nativeStruct.Value == IntPtr.Zero) return new KuzuAny(nativeStruct); // fallback
-            NativeMethods.kuzu_value_get_data_type(nativeStruct.Value, out var tNative);
+            NativeMethods.kuzu_value_get_data_type(ref nativeStruct, out var tNative);
             var id = NativeMethods.kuzu_data_type_get_id(ref tNative);
             KuzuValue v = id switch
             {
@@ -201,10 +230,12 @@ namespace KuzuDot.Value
             return v;
         }
 
-        private static KuzuValue WrapOwned(IntPtr ptr)
+        private static KuzuValue WrapOwned(IntPtr structPtr)
         {
-            KuzuGuard.AssertNotZero(ptr, "Failed to create value (null native pointer)");
-            return WrapFromHandle(new(ptr, false));
+            KuzuGuard.AssertNotZero(structPtr, "Failed to create value (null native pointer)");
+            var temp = Marshal.PtrToStructure<NativeKuzuValue>(structPtr);
+            Marshal.FreeHGlobal(structPtr);
+            return WrapNativeStruct(temp);
         }
 
         internal sealed class KuzuValueSafeHandle : KuzuSafeHandle
@@ -217,18 +248,22 @@ namespace KuzuDot.Value
             {
             }
 
-            internal KuzuValueSafeHandle(NativeKuzuValue nativeStruct) : base("KuzuValue")
+            public void Init(IntPtr nativePtr)
             {
-                NativeStruct = nativeStruct;
-                Initialize(NativeStruct.Value);
+                if (!IsInvalid) throw new InvalidOperationException("Handle is already initialized");
+                NativeStruct = Marshal.PtrToStructure<NativeKuzuValue>(nativePtr);
+                Initialize(nativePtr);
             }
 
             public void Init(NativeKuzuValue nativeStruct)
             {
                 if (!IsInvalid) throw new InvalidOperationException("Handle is already initialized");
-                NativeStruct = nativeStruct;
-                Initialize(NativeStruct.Value);
+                var ptr = Marshal.AllocHGlobal(Marshal.SizeOf<NativeKuzuValue>());
+                Marshal.StructureToPtr(nativeStruct, ptr, false);
+                NativeStruct = Marshal.PtrToStructure<NativeKuzuValue>(ptr);
+                Initialize(ptr);
             }
+
             protected override void Release()
             {
                 if (!NativeStruct.IsOwnedByCpp)

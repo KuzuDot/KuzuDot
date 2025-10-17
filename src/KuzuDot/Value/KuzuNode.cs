@@ -18,7 +18,7 @@ namespace KuzuDot.Value
             {
                 if (!_id.HasValue)
                 {
-                    _id = FetchId(Handle);
+                    _id = FetchId();
                 }
                 return _id.Value;
             }
@@ -28,7 +28,7 @@ namespace KuzuDot.Value
         {
             get
             {
-                _label ??= FetchLabel(Handle);
+                _label ??= FetchLabel();
                 return _label;
             }
         }
@@ -55,7 +55,7 @@ namespace KuzuDot.Value
         {
             ThrowIfDisposed();
             ValidatePropertyIndex(index);
-            var st = NativeMethods.kuzu_node_val_get_property_name_at(Handle, index, out var ptr);
+            var st = NativeMethods.kuzu_node_val_get_property_name_at(ref Handle.NativeStruct, index, out var ptr);
             KuzuGuard.CheckSuccess(st, $"Failed to get node property name at index {index}");
             return NativeUtil.PtrToStringAndDestroy(ptr, NativeMethods.kuzu_destroy_string);
         }
@@ -64,42 +64,42 @@ namespace KuzuDot.Value
         {
             ThrowIfDisposed();
             ValidatePropertyIndex(index);
-            var st = NativeMethods.kuzu_node_val_get_property_value_at(Handle, index, out var h);
+            var st = NativeMethods.kuzu_node_val_get_property_value_at(ref Handle.NativeStruct, index, out var h);
             KuzuGuard.CheckSuccess(st, $"Failed to get node property value at index {index}");
-            return FromNative(h);
+            return FromNativeStruct(h);
         }
 
         public override string ToString()
         {
             if (Handle.IsInvalid) return "Node(Disposed)";
-            var st = NativeMethods.kuzu_node_val_to_string(Handle, out var ptr);
+            var st = NativeMethods.kuzu_node_val_to_string(ref Handle.NativeStruct, out var ptr);
             KuzuGuard.CheckSuccess(st, "Failed to convert node to string");
             return NativeUtil.PtrToStringAndDestroy(ptr, NativeMethods.kuzu_destroy_string);
         }
 
-        private InternalId FetchId(SafeHandle handle)
+        private InternalId FetchId()
         {
             ThrowIfDisposed();
-            var st = NativeMethods.kuzu_node_val_get_id_val(handle, out var h);
+            var st = NativeMethods.kuzu_node_val_get_id_val(ref Handle.NativeStruct, out var h);
             KuzuGuard.CheckSuccess(st, "Failed to get node id value");
             //KuzuGuard.AssertBorrowed(h.IsOwnedByCpp);
-            using var id = (KuzuInternalId)FromNative(h);
+            using var id = (KuzuInternalId)FromNativeStruct(h);
             return id.Value;
         }
 
-        private string FetchLabel(SafeHandle handle)
+        private string FetchLabel()
         {
             ThrowIfDisposed();
-            var st = NativeMethods.kuzu_node_val_get_label_val(handle, out var h);
+            var st = NativeMethods.kuzu_node_val_get_label_val(ref Handle.NativeStruct, out var h);
             KuzuGuard.CheckSuccess(st, "Failed to get node label value");
             //KuzuGuard.AssertBorrowed(h.IsOwnedByCpp);
-            using var label = (KuzuString)FromNative(h);
+            using var label = (KuzuString)FromNativeStruct(h);
             return label.Value;
         }
         private ulong FetchPropertyCount()
         {
             ThrowIfDisposed();
-            var st = NativeMethods.kuzu_node_val_get_property_size(Handle, out var sz);
+            var st = NativeMethods.kuzu_node_val_get_property_size(ref Handle.NativeStruct, out var sz);
             KuzuGuard.CheckSuccess(st, "Failed to get node property size");
             return sz;
         }

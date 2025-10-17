@@ -14,6 +14,10 @@ namespace KuzuDot.Value
         {
         }
 
+        internal KuzuStruct(IntPtr ptr) : base(ptr)
+        {
+        }
+
         public ulong FieldCount
         {
             get
@@ -27,7 +31,7 @@ namespace KuzuDot.Value
         private ulong FetchFieldCount()
         {
             ThrowIfDisposed();
-            var st = NativeMethods.kuzu_value_get_struct_num_fields(Handle, out var c);
+            var st = NativeMethods.kuzu_value_get_struct_num_fields(ref Handle.NativeStruct, out var c);
             KuzuGuard.CheckSuccess(st, "Failed to get struct field count");
             return c;
         }
@@ -58,7 +62,7 @@ namespace KuzuDot.Value
         {
             ValidateIndex(index);
             ThrowIfDisposed();
-            var st = NativeMethods.kuzu_value_get_struct_field_name(Handle, index, out var ptr);
+            var st = NativeMethods.kuzu_value_get_struct_field_name(ref Handle.NativeStruct, index, out var ptr);
             KuzuGuard.CheckSuccess(st, $"Failed to get struct field name at index {index}");
             return NativeUtil.PtrToStringAndDestroy(ptr, NativeMethods.kuzu_destroy_string);
         }
@@ -67,9 +71,9 @@ namespace KuzuDot.Value
         {
             ValidateIndex(index);
             ThrowIfDisposed();
-            var st = NativeMethods.kuzu_value_get_struct_field_value(Handle, index, out var h);
+            var st = NativeMethods.kuzu_value_get_struct_field_value(ref Handle.NativeStruct, index, out var h);
             KuzuGuard.CheckSuccess(st, $"Failed to get struct field value at index {index}");
-            return FromNative(h);
+            return FromNativeStruct(h);
         }
 
         private void ValidateIndex(ulong index)

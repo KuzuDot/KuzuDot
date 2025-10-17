@@ -14,11 +14,18 @@ namespace KuzuDot.Value
             Days = days;
         }
 
+        internal KuzuDate(IntPtr ptr) : base(ptr)
+        {
+            if (!TryGetNativeValue(out var days))
+                throw new KuzuException("Failed to get date value");
+            Days = days;
+        }
+
         public int Days { get; }
 
         private bool TryGetNativeValue(out int days)
         {
-            var st = NativeMethods.kuzu_value_get_date(Handle, out var native);
+            var st = NativeMethods.kuzu_value_get_date(ref Handle.NativeStruct, out var native);
             if (st == KuzuState.Success)
             {
                 days = native.Days;

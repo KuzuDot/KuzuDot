@@ -13,9 +13,9 @@ namespace KuzuDot.Value
         public KuzuList GetNodeList()
         {
             ThrowIfDisposed();
-            var st = NativeMethods.kuzu_value_get_recursive_rel_node_list(Handle, out var h);
+            var st = NativeMethods.kuzu_value_get_recursive_rel_node_list(ref Handle.NativeStruct, out var h);
             KuzuGuard.CheckSuccess(st, "Failed to get recursive rel node list");
-            var lv = (KuzuList)FromNative(h);
+            var lv = (KuzuList)FromNativeStruct(h);
             if (lv.Count == 0) throw new KuzuException("Recursive relationship not supported: empty node list");
             return lv;
         }
@@ -23,9 +23,9 @@ namespace KuzuDot.Value
         public KuzuList GetRelList()
         {
             ThrowIfDisposed();
-            var st = NativeMethods.kuzu_value_get_recursive_rel_rel_list(Handle, out var h);
+            var st = NativeMethods.kuzu_value_get_recursive_rel_rel_list(ref Handle.NativeStruct, out var h);
             KuzuGuard.CheckSuccess(st, "Failed to get recursive rel rel list");
-            var lv = (KuzuList)FromNative(h);
+            var lv = (KuzuList)FromNativeStruct(h);
             if (lv.Count == 0) throw new KuzuException("Recursive relationship not supported: empty rel list");
             return lv;
         }
