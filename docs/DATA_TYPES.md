@@ -39,77 +39,26 @@ public abstract class KuzuValue : IDisposable
 
 #### Integer Types
 
-```csharp
-// 8-bit signed integer
-public sealed class KuzuInt8 : KuzuTypedValue<sbyte>
-{
-    public sbyte Value { get; }
-}
-
-// 16-bit signed integer
-public sealed class KuzuInt16 : KuzuTypedValue<short>
-{
-    public short Value { get; }
-}
-
-// 32-bit signed integer
-public sealed class KuzuInt32 : KuzuTypedValue<int>
-{
-    public int Value { get; }
-}
-
-// 64-bit signed integer
-public sealed class KuzuInt64 : KuzuTypedValue<long>
-{
-    public long Value { get; }
-}
-
-// 8-bit unsigned integer
-public sealed class KuzuUInt8 : KuzuTypedValue<byte>
-{
-    public byte Value { get; }
-}
-
-// 16-bit unsigned integer
-public sealed class KuzuUInt16 : KuzuTypedValue<ushort>
-{
-    public ushort Value { get; }
-}
-
-// 32-bit unsigned integer
-public sealed class KuzuUInt32 : KuzuTypedValue<uint>
-{
-    public uint Value { get; }
-}
-
-// 64-bit unsigned integer
-public sealed class KuzuUInt64 : KuzuTypedValue<ulong>
-{
-    public ulong Value { get; }
-}
-
-// 128-bit signed integer
-public sealed class KuzuInt128 : KuzuTypedValue<BigInteger>
-{
-    public BigInteger Value { get; }
-}
-```
+| Class | .NET Type | Description |
+| --- | --- | --- |
+KuzuInt8 | sbyte | 8-bit signed integer
+KuzuUInt8 | byte | 8-bit unsigned integer
+KuzuInt16 | short | 16-bit signed integer
+KuzuUInt16 | ushort | 16-bit unsigned integer
+KuzuInt32 | int | 32-bit signed integer
+KuzuUInt32 | uint | 32-bit unsigned integer
+KuzuInt64 | long | 64-bit signed integer
+KuzuUInt64 | ulong | 64-bit unsigned integer
+KuzuInt128 | BigInteger | 128-bit signed integer
 
 #### Floating Point Types
 
-```csharp
-// 32-bit floating point
-public sealed class KuzuFloat : KuzuTypedValue<float>
-{
-    public float Value { get; }
-}
 
-// 64-bit floating point
-public sealed class KuzuDouble : KuzuTypedValue<double>
-{
-    public double Value { get; }
-}
-```
+| Class | .NET Type | Description |
+| --- | --- | --- |
+| KuzuFloat | float | 32-bit float |
+| KuzuDouble | double | 64-bit float |
+
 
 #### Example Usage
 
@@ -159,12 +108,11 @@ while (result.HasNext())
 
 ### String Type
 
-```csharp
-public sealed class KuzuString : KuzuTypedValue<string>
-{
-    public string Value { get; }
-}
-```
+| Class | .NET Type | Description |
+| --- | --- | --- |
+| KuzuString | string | ASCII* String |
+
+\*UTF8 might work, but isn't guaranteed.
 
 #### Example Usage
 
@@ -188,17 +136,11 @@ while (result.HasNext())
 
 ### Date Type
 
-```csharp
-public sealed class KuzuDate : KuzuTypedValue<DateTime>
-{
-    public DateTime Value { get; }
-    
-    // Additional methods for date operations
-    public DateTime AsDateTime() { }
-#if NET8_0_OR_GREATER
-    public DateOnly AsDateOnly() { }
-#endif
-}
+| Class | .NET Type | Description |
+| --- | --- | --- |
+KuzuDate | `DateTime` | Date (year, month, day)
+
+*In .NET 8.0 or greater, `DateOnly` can also be used
 ```
 
 #### Example Usage
@@ -225,42 +167,13 @@ while (result.HasNext())
 
 KuzuDot supports multiple timestamp precisions:
 
-```csharp
-// Microsecond timestamp
-public sealed class KuzuTimestamp : KuzuTypedValue<DateTime>
-{
-    public DateTime Value { get; }
-    public long UnixMicros { get; }
-}
-
-// Nanosecond timestamp
-public sealed class KuzuTimestampNs : KuzuTypedValue<DateTime>
-{
-    public DateTime Value { get; }
-    public long UnixNanos { get; }
-}
-
-// Millisecond timestamp
-public sealed class KuzuTimestampMs : KuzuTypedValue<DateTime>
-{
-    public DateTime Value { get; }
-    public long UnixMillis { get; }
-}
-
-// Second timestamp
-public sealed class KuzuTimestampSec : KuzuTypedValue<DateTime>
-{
-    public DateTime Value { get; }
-    public long UnixSeconds { get; }
-}
-
-// Timezone-aware timestamp
-public sealed class KuzuTimestampTz : KuzuTypedValue<DateTimeOffset>
-{
-    public DateTimeOffset Value { get; }
-    public long UnixMicros { get; }
-}
-```
+| Class | .NET Type | Description |
+| --- | --- | --- |
+KuzuTimestamp | DateTime | Microseconds
+KuzuTimestampNs | DateTime | Nanoseconds
+KuzuTimestampMs | DateTime | Milliseconds
+KuzuTimestampSec | DateTime | Seconds
+KuzuTimestampTz | DateTimeOffset | Timezone-aware
 
 #### Example Usage
 
@@ -291,12 +204,9 @@ while (result.HasNext())
 
 ### Interval Type
 
-```csharp
-public sealed class KuzuInterval : KuzuTypedValue<TimeSpan>
-{
-    public TimeSpan Value { get; }
-}
-```
+| Class | .NET Type | Description |
+| --- | --- | --- |
+KuzuInterval | TimeSpan | Date/Time Interval
 
 #### Example Usage
 
@@ -801,5 +711,3 @@ catch (KuzuException ex)
     Console.WriteLine($"KuzuDB error: {ex.Message}");
 }
 ```
-
-This comprehensive guide covers all KuzuDB data types available in KuzuDot, with practical examples and best practices for working with each type.

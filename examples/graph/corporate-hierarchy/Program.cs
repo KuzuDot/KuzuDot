@@ -1,5 +1,6 @@
 using System;
 using KuzuDot;
+using KuzuDot.Value;
 
 namespace KuzuDot.Examples.Graph
 {
@@ -145,7 +146,11 @@ namespace KuzuDot.Examples.Graph
             using var companyStmt = connection.Prepare("CREATE (:Company {id: $id, name: $name, industry: $industry, founded_year: $founded_year, headquarters: $headquarters})");
             foreach (var company in companies)
             {
-                companyStmt.Bind(company);
+                companyStmt.Bind("id", company.Id);
+                companyStmt.Bind("name", company.Name);
+                companyStmt.Bind("industry", company.Industry);
+                companyStmt.Bind("founded_year", company.FoundedYear);
+                companyStmt.Bind("headquarters", company.Headquarters);
                 companyStmt.Execute();
                 Console.WriteLine($"  Created company: {company.Name}");
             }
@@ -163,7 +168,9 @@ namespace KuzuDot.Examples.Graph
             using var deptStmt = connection.Prepare("CREATE (:Department {id: $id, name: $name, budget: $budget})");
             foreach (var dept in departments)
             {
-                deptStmt.Bind(dept);
+                deptStmt.Bind("id", dept.Id);
+                deptStmt.Bind("name", dept.Name);
+                deptStmt.Bind("budget", dept.Budget);
                 deptStmt.Execute();
                 Console.WriteLine($"  Created department: {dept.Name}");
             }
@@ -461,9 +468,9 @@ namespace KuzuDot.Examples.Graph
             // 5. High-level executives
             Console.WriteLine("\n5. High-level executives (salary > $150k):");
             using var execResult = connection.Query(@"
-                MATCH (e:Employee)
+                MATCH (e:Employee)-[:BelongsTo]->(d:Department)
                 WHERE e.salary > 150000
-                RETURN e.name, e.role, e.salary, e.department
+                RETURN e.name, e.role, e.salary, d.name AS department
                 ORDER BY e.salary DESC");
 
             while (execResult.HasNext())
@@ -500,21 +507,18 @@ namespace KuzuDot.Examples.Graph
             Console.WriteLine("\n7. Employee tenure analysis:");
             using var tenureResult = connection.Query(@"
                 MATCH (e:Employee)
-                RETURN e.name, e.hire_date, 
-                       (DATE() - e.hire_date) as tenure_days,
-                       e.salary
-                ORDER BY tenure_days DESC");
+                RETURN e.name, e.hire_date, e.salary
+                ORDER BY e.hire_date ASC");
 
             while (tenureResult.HasNext())
             {
                 using var row = tenureResult.GetNext();
                 var empName = row.GetValueAs<string>(0);
-                var hireDate = row.GetValueAs<DateTime>(1);
-                var tenureDays = row.GetValueAs<long>(2);
-                var salary = row.GetValueAs<double>(3);
+                using var hireDateValue = row.GetValue<KuzuDate>(1);
+                var hireDate = hireDateValue.AsDateTime();
+                var salary = row.GetValueAs<double>(2);
                 
-                var years = tenureDays / 365.0;
-                Console.WriteLine($"  {empName}: {years:F1} years (hired {hireDate:yyyy-MM-dd}), salary: ${salary:F0}");
+                Console.WriteLine($"  {empName}: hired {hireDate:yyyy-MM-dd}, salary: ${salary:F0}");
             }
 
             // 8. Cross-department collaboration

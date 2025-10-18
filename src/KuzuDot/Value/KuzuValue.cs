@@ -102,6 +102,18 @@ namespace KuzuDot.Value
 
         internal static object ConvertKuzuValue(Type target, KuzuValue value)
         {
+            // Handle nullable types first
+            var underlyingType = System.Nullable.GetUnderlyingType(target);
+            if (underlyingType != null)
+            {
+                // Convert to the underlying type first
+                var converted = ConvertKuzuValue(underlyingType, value);
+                // If the value is null, return null for nullable type
+                if (value.IsNull())
+                    return null!;
+                return converted;
+            }
+
             // Order common primitives first; extend as needed
             switch (value)
             {

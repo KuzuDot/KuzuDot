@@ -107,15 +107,6 @@ connection.SetQueryTimeout(30000); // 30 seconds
 
 ### Efficient Query Patterns
 
-#### Use Specific Column Selection
-
-```csharp
-// ❌ Inefficient - selects all columns
-using var result = connection.Query("MATCH (p:Person) RETURN p");
-
-// ✅ Efficient - selects only needed columns
-using var result = connection.Query("MATCH (p:Person) RETURN p.id, p.name");
-```
 
 #### Use LIMIT for Large Result Sets
 

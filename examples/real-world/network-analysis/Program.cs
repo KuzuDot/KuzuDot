@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using KuzuDot;
 
 namespace KuzuDot.Examples.RealWorld
@@ -8,13 +10,13 @@ namespace KuzuDot.Examples.RealWorld
     /// </summary>
     public class NetworkAnalysis
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             Console.WriteLine("=== KuzuDot Network Analysis Example ===");
             
             try
             {
-                RunExample();
+                await RunExample();
             }
             catch (KuzuException ex)
             {
@@ -26,7 +28,7 @@ namespace KuzuDot.Examples.RealWorld
             }
         }
 
-        private static void RunExample()
+        private static async Task RunExample()
         {
             // Create an in-memory database
             Console.WriteLine("Creating in-memory database...");
@@ -43,7 +45,7 @@ namespace KuzuDot.Examples.RealWorld
 
             // Demonstrate network analysis
             Console.WriteLine("\n=== Network Analysis Examples ===");
-            DemonstrateNetworkAnalysis(connection);
+            await DemonstrateNetworkAnalysis(connection);
 
             Console.WriteLine("\n=== Network Analysis Example completed successfully! ===");
         }
@@ -106,7 +108,25 @@ namespace KuzuDot.Examples.RealWorld
             // Create relationship tables
             connection.NonQuery(@"
                 CREATE REL TABLE ConnectedTo(
-                    FROM Node TO Node,
+                    FROM Router TO Router,
+                    connection_type STRING,
+                    bandwidth DOUBLE,
+                    latency DOUBLE,
+                    status STRING
+                )");
+
+            connection.NonQuery(@"
+                CREATE REL TABLE SwitchToRouter(
+                    FROM Switch TO Router,
+                    connection_type STRING,
+                    bandwidth DOUBLE,
+                    latency DOUBLE,
+                    status STRING
+                )");
+
+            connection.NonQuery(@"
+                CREATE REL TABLE ServerToSwitch(
+                    FROM Server TO Switch,
                     connection_type STRING,
                     bandwidth DOUBLE,
                     latency DOUBLE,
@@ -160,7 +180,11 @@ namespace KuzuDot.Examples.RealWorld
 
             foreach (var router in routers)
             {
-                routerStmt.Bind(router);
+                routerStmt.Bind("id", router.Id);
+                routerStmt.Bind("name", router.Name);
+                routerStmt.Bind("model", router.Model);
+                routerStmt.Bind("ip_address", router.IpAddress);
+                routerStmt.Bind("location", router.Location);
                 routerStmt.Execute();
             }
 
@@ -175,9 +199,13 @@ namespace KuzuDot.Examples.RealWorld
                     location: $location
                 })");
 
-            foreach (var switch in switches)
+            foreach (var networkSwitch in switches)
             {
-                switchStmt.Bind(switch);
+                switchStmt.Bind("id", networkSwitch.Id);
+                switchStmt.Bind("name", networkSwitch.Name);
+                switchStmt.Bind("model", networkSwitch.Model);
+                switchStmt.Bind("port_count", networkSwitch.PortCount);
+                switchStmt.Bind("location", networkSwitch.Location);
                 switchStmt.Execute();
             }
 
@@ -195,7 +223,12 @@ namespace KuzuDot.Examples.RealWorld
 
             foreach (var server in servers)
             {
-                serverStmt.Bind(server);
+                serverStmt.Bind("id", server.Id);
+                serverStmt.Bind("name", server.Name);
+                serverStmt.Bind("os", server.Os);
+                serverStmt.Bind("cpu_cores", server.CpuCores);
+                serverStmt.Bind("memory_gb", server.MemoryGb);
+                serverStmt.Bind("location", server.Location);
                 serverStmt.Execute();
             }
 
@@ -212,7 +245,11 @@ namespace KuzuDot.Examples.RealWorld
 
             foreach (var user in users)
             {
-                userStmt.Bind(user);
+                userStmt.Bind("id", user.Id);
+                userStmt.Bind("username", user.Username);
+                userStmt.Bind("department", user.Department);
+                userStmt.Bind("role", user.Role);
+                userStmt.BindTimestamp("last_login", user.LastLogin);
                 userStmt.Execute();
             }
 
@@ -249,7 +286,7 @@ namespace KuzuDot.Examples.RealWorld
             using var switchRouterStmt = connection.Prepare(@"
                 MATCH (s:Switch), (r:Router) 
                 WHERE s.id = $switch_id AND r.id = $router_id 
-                CREATE (s)-[:ConnectedTo {connection_type: 'Router', bandwidth: $bandwidth, latency: $latency, status: $status}]->(r)");
+                CREATE (s)-[:SwitchToRouter {connection_type: 'Router', bandwidth: $bandwidth, latency: $latency, status: $status}]->(r)");
 
             for (int i = 1; i <= 30; i++)
             {
@@ -266,7 +303,7 @@ namespace KuzuDot.Examples.RealWorld
             using var serverSwitchStmt = connection.Prepare(@"
                 MATCH (s:Server), (sw:Switch) 
                 WHERE s.id = $server_id AND sw.id = $switch_id 
-                CREATE (s)-[:ConnectedTo {connection_type: 'Switch', bandwidth: $bandwidth, latency: $latency, status: $status}]->(sw)");
+                CREATE (s)-[:ServerToSwitch {connection_type: 'Switch', bandwidth: $bandwidth, latency: $latency, status: $status}]->(sw)");
 
             for (int i = 1; i <= 50; i++)
             {
@@ -335,7 +372,7 @@ namespace KuzuDot.Examples.RealWorld
             Console.WriteLine("  Created all relationships");
         }
 
-        private static void DemonstrateNetworkAnalysis(Connection connection)
+        private static async Task DemonstrateNetworkAnalysis(Connection connection)
         {
             // 1. Network topology analysis
             Console.WriteLine("1. Network topology analysis:");
@@ -433,8 +470,7 @@ namespace KuzuDot.Examples.RealWorld
             using var shortestPathResult = connection.Query(@"
                 MATCH path = (r1:Router)-[:ConnectedTo*1..3]->(r2:Router)
                 WHERE r1.id = 1 AND r2.id = 10
-                RETURN LENGTH(path) as path_length, 
-                       [node in NODES(path) | node.name] as path_nodes
+                RETURN LENGTH(path) as path_length
                 ORDER BY path_length
                 LIMIT 5");
 
@@ -443,9 +479,8 @@ namespace KuzuDot.Examples.RealWorld
             {
                 using var row = shortestPathResult.GetNext();
                 var pathLength = row.GetValueAs<long>(0);
-                var pathNodes = row.GetValueAs<string>(1);
                 
-                Console.WriteLine($"    Path length {pathLength}: {pathNodes}");
+                Console.WriteLine($"    Path length: {pathLength}");
             }
 
             // Find critical nodes (nodes whose removal would disconnect the network)
@@ -594,10 +629,9 @@ namespace KuzuDot.Examples.RealWorld
                 Console.WriteLine($"    {username} ({department}): {serverCount} servers");
             }
 
-            // Find inactive users
+            // Find inactive users (simplified)
             using var inactiveResult = connection.Query(@"
                 MATCH (u:User)
-                WHERE u.last_login < datetime() - INTERVAL 30 DAY
                 RETURN u.username, u.department, u.last_login
                 ORDER BY u.last_login ASC
                 LIMIT 10");
@@ -742,8 +776,8 @@ namespace KuzuDot.Examples.RealWorld
             // Find most active users
             using var activeResult = connection.Query(@"
                 MATCH (u:User)-[:Accesses]->(s:Server)
-                WITH u, COUNT(s) as access_count, SUM(s.duration_minutes) as total_duration
-                RETURN u.username, u.department, access_count, total_duration
+                WITH u, COUNT(s) as access_count
+                RETURN u.username, u.department, access_count
                 ORDER BY access_count DESC
                 LIMIT 10");
 
@@ -754,9 +788,8 @@ namespace KuzuDot.Examples.RealWorld
                 var username = row.GetValueAs<string>(0);
                 var department = row.GetValueAs<string>(1);
                 var accessCount = row.GetValueAs<long>(2);
-                var totalDuration = row.GetValueAs<long>(3);
                 
-                Console.WriteLine($"    {username} ({department}): {accessCount} accesses, {totalDuration} minutes total");
+                Console.WriteLine($"    {username} ({department}): {accessCount} server accesses");
             }
 
             // Find users by department activity
@@ -820,8 +853,8 @@ namespace KuzuDot.Examples.RealWorld
 
             // Find load balancing opportunities
             using var loadBalanceResult = connection.Query(@"
-                MATCH (n:Node)-[:ConnectedTo]->(connected)
-                WITH n, COUNT(connected) as connection_count, AVG(connected.bandwidth) as avg_bandwidth
+                MATCH (n:Node)-[c:ConnectedTo]->(connected)
+                WITH n, COUNT(connected) as connection_count, AVG(c.bandwidth) as avg_bandwidth
                 WHERE connection_count > 5 AND avg_bandwidth < 50.0
                 RETURN n.name, connection_count, avg_bandwidth
                 ORDER BY connection_count DESC

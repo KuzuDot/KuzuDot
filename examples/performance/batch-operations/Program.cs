@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using KuzuDot;
 
 namespace KuzuDot.Examples.Performance
@@ -8,13 +10,13 @@ namespace KuzuDot.Examples.Performance
     /// </summary>
     public class BatchOperations
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             Console.WriteLine("=== KuzuDot Batch Operations Example ===");
             
             try
             {
-                RunExample();
+                await RunExample();
             }
             catch (KuzuException ex)
             {
@@ -26,7 +28,7 @@ namespace KuzuDot.Examples.Performance
             }
         }
 
-        private static void RunExample()
+        private static async Task RunExample()
         {
             // Create an in-memory database
             Console.WriteLine("Creating in-memory database...");
@@ -39,7 +41,7 @@ namespace KuzuDot.Examples.Performance
 
             // Demonstrate batch operations
             Console.WriteLine("\n=== Batch Operations Examples ===");
-            DemonstrateBatchOperations(connection);
+            await DemonstrateBatchOperations(connection);
 
             Console.WriteLine("\n=== Batch Operations Example completed successfully! ===");
         }
@@ -58,7 +60,7 @@ namespace KuzuDot.Examples.Performance
                 )");
 
             connection.NonQuery(@"
-                CREATE NODE TABLE Order(
+                CREATE NODE TABLE CustomerOrder(
                     id INT64, 
                     order_date TIMESTAMP,
                     total_amount DOUBLE,
@@ -78,19 +80,19 @@ namespace KuzuDot.Examples.Performance
 
             connection.NonQuery(@"
                 CREATE REL TABLE Places(
-                    FROM Customer TO Order,
+                    FROM Customer TO CustomerOrder,
                     order_date TIMESTAMP
                 )");
 
             connection.NonQuery(@"
                 CREATE REL TABLE Contains(
-                    FROM Order TO Product,
+                    FROM CustomerOrder TO Product,
                     quantity INT32,
                     unit_price DOUBLE
                 )");
         }
 
-        private static void DemonstrateBatchOperations(Connection connection)
+        private static async Task DemonstrateBatchOperations(Connection connection)
         {
             // 1. Batch insert with prepared statements
             Console.WriteLine("1. Batch insert with prepared statements:");
@@ -163,7 +165,11 @@ namespace KuzuDot.Examples.Performance
 
             foreach (var product in products)
             {
-                productStmt.Bind(product); // Object binding
+                productStmt.Bind("id", product.Id);
+                productStmt.Bind("name", product.Name);
+                productStmt.Bind("category", product.Category);
+                productStmt.Bind("price", product.Price);
+                productStmt.Bind("stock_quantity", product.StockQuantity);
                 productStmt.Execute();
             }
 
@@ -213,7 +219,7 @@ namespace KuzuDot.Examples.Performance
         {
             // Create orders
             using var orderStmt = connection.Prepare(@"
-                CREATE (:Order {
+                CREATE (:CustomerOrder {
                     id: $id, 
                     order_date: $order_date,
                     total_amount: $total_amount,
@@ -223,13 +229,16 @@ namespace KuzuDot.Examples.Performance
             var orders = GenerateOrders(200);
             foreach (var order in orders)
             {
-                orderStmt.Bind(order);
+                orderStmt.Bind("id", order.Id);
+                orderStmt.Bind("order_date", order.OrderDate);
+                orderStmt.Bind("total_amount", order.TotalAmount);
+                orderStmt.Bind("status", order.Status);
                 orderStmt.Execute();
             }
 
             // Create customer-order relationships
             using var placesStmt = connection.Prepare(@"
-                MATCH (c:Customer), (o:Order) 
+                MATCH (c:Customer), (o:CustomerOrder) 
                 WHERE c.id = $customer_id AND o.id = $order_id 
                 CREATE (c)-[:Places {order_date: $order_date}]->(o)");
 
@@ -253,7 +262,7 @@ namespace KuzuDot.Examples.Performance
 
             // Create order-product relationships
             using var containsStmt = connection.Prepare(@"
-                MATCH (o:Order), (p:Product) 
+                MATCH (o:CustomerOrder), (p:Product) 
                 WHERE o.id = $order_id AND p.id = $product_id 
                 CREATE (o)-[:Contains {quantity: $quantity, unit_price: $unit_price}]->(p)");
 
@@ -323,7 +332,8 @@ namespace KuzuDot.Examples.Performance
             for (int i = 0; i < largeDataset.Count; i++)
             {
                 var customer = largeDataset[i];
-                largeInsertStmt.Bind("id", customer.Id);
+                // Offset IDs to avoid conflicts with previous batch
+                largeInsertStmt.Bind("id", customer.Id + 10000);
                 largeInsertStmt.Bind("name", customer.Name);
                 largeInsertStmt.Bind("email", customer.Email);
                 largeInsertStmt.Bind("city", customer.City);

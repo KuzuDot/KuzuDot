@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using KuzuDot;
 
 namespace KuzuDot.Examples.Graph
@@ -8,13 +10,13 @@ namespace KuzuDot.Examples.Graph
     /// </summary>
     public class ProductCatalog
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             Console.WriteLine("=== KuzuDot Product Catalog Example ===");
             
             try
             {
-                RunExample();
+                await RunExample();
             }
             catch (KuzuException ex)
             {
@@ -26,7 +28,7 @@ namespace KuzuDot.Examples.Graph
             }
         }
 
-        private static void RunExample()
+        private static async Task RunExample()
         {
             // Create an in-memory database
             Console.WriteLine("Creating in-memory database...");
@@ -43,7 +45,7 @@ namespace KuzuDot.Examples.Graph
 
             // Demonstrate product catalog queries
             Console.WriteLine("\n=== Product Catalog Examples ===");
-            DemonstrateProductCatalog(connection);
+            await DemonstrateProductCatalog(connection);
 
             Console.WriteLine("\n=== Product Catalog Example completed successfully! ===");
         }
@@ -101,7 +103,7 @@ namespace KuzuDot.Examples.Graph
                 )");
 
             connection.NonQuery(@"
-                CREATE NODE TABLE Order(
+                CREATE NODE TABLE CustomerOrder(
                     id INT64, 
                     order_date TIMESTAMP,
                     total_amount DOUBLE,
@@ -140,14 +142,14 @@ namespace KuzuDot.Examples.Graph
 
             connection.NonQuery(@"
                 CREATE REL TABLE Contains(
-                    FROM Order TO Product,
+                    FROM CustomerOrder TO Product,
                     quantity INT32,
                     unit_price DOUBLE
                 )");
 
             connection.NonQuery(@"
                 CREATE REL TABLE PlacedBy(
-                    FROM Customer TO Order
+                    FROM Customer TO CustomerOrder
                 )");
 
             connection.NonQuery(@"
@@ -249,7 +251,7 @@ namespace KuzuDot.Examples.Graph
             // Insert orders
             var orders = GenerateOrders();
             using var orderStmt = connection.Prepare(@"
-                CREATE (:Order {
+                CREATE (:CustomerOrder {
                     id: $id, 
                     order_date: $order_date,
                     total_amount: $total_amount,
@@ -370,7 +372,7 @@ namespace KuzuDot.Examples.Graph
 
             // Customer-Order relationships
             using var customerOrderStmt = connection.Prepare(@"
-                MATCH (c:Customer), (o:Order) 
+                MATCH (c:Customer), (o:CustomerOrder) 
                 WHERE c.id = $customer_id AND o.id = $order_id 
                 CREATE (c)-[:PlacedBy]->(o)");
 
@@ -393,7 +395,7 @@ namespace KuzuDot.Examples.Graph
 
             // Order-Product relationships
             using var orderProductStmt = connection.Prepare(@"
-                MATCH (o:Order), (p:Product) 
+                MATCH (o:CustomerOrder), (p:Product) 
                 WHERE o.id = $order_id AND p.id = $product_id 
                 CREATE (o)-[:Contains {quantity: $quantity, unit_price: $unit_price}]->(p)");
 
@@ -446,7 +448,7 @@ namespace KuzuDot.Examples.Graph
             Console.WriteLine("  Created all relationships");
         }
 
-        private static void DemonstrateProductCatalog(Connection connection)
+        private static async Task DemonstrateProductCatalog(Connection connection)
         {
             // 1. Product browsing by category
             Console.WriteLine("1. Product browsing by category:");
@@ -555,7 +557,7 @@ namespace KuzuDot.Examples.Graph
 
             // Get products bought together
             using var boughtTogetherResult = connection.Query(@"
-                MATCH (o:Order)-[:Contains]->(p1:Product),
+                MATCH (o:CustomerOrder)-[:Contains]->(p1:Product),
                       (o)-[:Contains]->(p2:Product)
                 WHERE p1.id = 1 AND p2.id != 1
                 RETURN p2.name, p2.price, COUNT(o) as order_count
@@ -596,7 +598,7 @@ namespace KuzuDot.Examples.Graph
         {
             // Get customer purchase history
             using var purchaseHistoryResult = connection.Query(@"
-                MATCH (c:Customer)-[:PlacedBy]->(o:Order)-[:Contains]->(p:Product)
+                MATCH (c:Customer)-[:PlacedBy]->(o:CustomerOrder)-[:Contains]->(p:Product)
                 WHERE c.id = 1
                 RETURN o.order_date, p.name, p.price, o.total_amount
                 ORDER BY o.order_date DESC");
@@ -615,7 +617,7 @@ namespace KuzuDot.Examples.Graph
 
             // Get customer spending by category
             using var spendingResult = connection.Query(@"
-                MATCH (c:Customer)-[:PlacedBy]->(o:Order)-[:Contains]->(p:Product)-[:BelongsTo]->(cat:Category)
+                MATCH (c:Customer)-[:PlacedBy]->(o:CustomerOrder)-[:Contains]->(p:Product)-[:BelongsTo]->(cat:Category)
                 WHERE c.id = 1
                 RETURN cat.name, SUM(p.price) as total_spent, COUNT(p) as product_count
                 ORDER BY total_spent DESC");
@@ -633,7 +635,7 @@ namespace KuzuDot.Examples.Graph
 
             // Get customer loyalty by brand
             using var loyaltyResult = connection.Query(@"
-                MATCH (c:Customer)-[:PlacedBy]->(o:Order)-[:Contains]->(p:Product)-[:ManufacturedBy]->(b:Brand)
+                MATCH (c:Customer)-[:PlacedBy]->(o:CustomerOrder)-[:Contains]->(p:Product)-[:ManufacturedBy]->(b:Brand)
                 WHERE c.id = 1
                 RETURN b.name, COUNT(p) as product_count, SUM(p.price) as total_spent
                 ORDER BY product_count DESC");
@@ -731,7 +733,7 @@ namespace KuzuDot.Examples.Graph
 
             // Get brand sales
             using var brandSalesResult = connection.Query(@"
-                MATCH (b:Brand)<-[:ManufacturedBy]-(p:Product)<-[:Contains]-(o:Order)
+                MATCH (b:Brand)<-[:ManufacturedBy]-(p:Product)<-[:Contains]-(o:CustomerOrder)
                 RETURN b.name, COUNT(o) as order_count, SUM(p.price) as total_sales
                 ORDER BY total_sales DESC");
 
@@ -768,7 +770,7 @@ namespace KuzuDot.Examples.Graph
         {
             // Get order statistics
             using var orderStatsResult = connection.Query(@"
-                MATCH (o:Order)
+                MATCH (o:CustomerOrder)
                 RETURN COUNT(o) as total_orders, 
                        AVG(o.total_amount) as avg_order_value,
                        MIN(o.total_amount) as min_order_value,
@@ -791,7 +793,7 @@ namespace KuzuDot.Examples.Graph
 
             // Get order status distribution
             using var orderStatusResult = connection.Query(@"
-                MATCH (o:Order)
+                MATCH (o:CustomerOrder)
                 RETURN o.status, COUNT(o) as order_count, AVG(o.total_amount) as avg_amount
                 ORDER BY order_count DESC");
 
@@ -808,7 +810,7 @@ namespace KuzuDot.Examples.Graph
 
             // Get order trends by date
             using var orderTrendsResult = connection.Query(@"
-                MATCH (o:Order)
+                MATCH (o:CustomerOrder)
                 RETURN DATE(o.order_date) as order_date, COUNT(o) as order_count, AVG(o.total_amount) as avg_amount
                 ORDER BY order_date DESC");
 
@@ -884,7 +886,7 @@ namespace KuzuDot.Examples.Graph
         {
             // Find products frequently bought together
             using var crossSellResult = connection.Query(@"
-                MATCH (o:Order)-[:Contains]->(p1:Product),
+                MATCH (o:CustomerOrder)-[:Contains]->(p1:Product),
                       (o)-[:Contains]->(p2:Product)
                 WHERE p1.id < p2.id
                 RETURN p1.name, p2.name, COUNT(o) as frequency

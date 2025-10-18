@@ -1,5 +1,6 @@
 using System;
 using KuzuDot;
+using KuzuDot.Value;
 
 namespace KuzuDot.Examples.Advanced
 {
@@ -44,6 +45,9 @@ namespace KuzuDot.Examples.Advanced
             // Demonstrate POCO mapping
             Console.WriteLine("\n=== POCO Mapping Examples ===");
             DemonstratePocoMapping(connection);
+
+            // Demonstrate naming strategies
+            DemonstrateNamingStrategies(connection);
 
             Console.WriteLine("\n=== POCO Mapping Example completed successfully! ===");
         }
@@ -92,7 +96,7 @@ namespace KuzuDot.Examples.Advanced
             using var deptStmt = connection.Prepare("CREATE (:Department {id: $id, name: $name, budget: $budget, manager_id: $manager_id})");
             foreach (var dept in departments)
             {
-                deptStmt.Bind(dept);
+                deptStmt.BindSnakeCase(dept);
                 deptStmt.Execute();
             }
 
@@ -150,10 +154,7 @@ namespace KuzuDot.Examples.Advanced
 
             foreach (var work in workRelations)
             {
-                workStmt.Bind("employee_id", work.EmployeeId);
-                workStmt.Bind("department_id", work.DepartmentId);
-                workStmt.BindDate("start_date", work.StartDate);
-                workStmt.Bind("role", work.Role);
+                workStmt.BindSnakeCase(work);
                 workStmt.Execute();
             }
         }
@@ -161,8 +162,8 @@ namespace KuzuDot.Examples.Advanced
         private static void DemonstratePocoMapping(Connection connection)
         {
             // 1. Basic POCO mapping
-            Console.WriteLine("1. Basic POCO mapping - All employees:");
-            var employees = connection.Query<Employee>("MATCH (e:Employee) RETURN e.id, e.name, e.email, e.department, e.salary, e.hire_date, e.is_active");
+            Console.WriteLine("\n1. Basic POCO mapping - All employees:");
+            var employees = connection.Query<Employee>("MATCH (e:Employee) RETURN e.id AS id, e.name AS name, e.email AS email, e.department AS department, e.salary AS salary, e.hire_date AS hire_date, e.is_active AS is_active");
             
             foreach (var emp in employees)
             {
@@ -171,7 +172,7 @@ namespace KuzuDot.Examples.Advanced
 
             // 2. POCO mapping with custom column names
             Console.WriteLine("\n2. POCO mapping with custom column names:");
-            var departments = connection.Query<Department>("MATCH (d:Department) RETURN d.id, d.name, d.budget, d.manager_id");
+            var departments = connection.Query<Department>("MATCH (d:Department) RETURN d.id AS id, d.name AS name, d.budget AS budget, d.manager_id AS manager_id");
             
             foreach (var dept in departments)
             {
@@ -180,7 +181,7 @@ namespace KuzuDot.Examples.Advanced
 
             // 3. POCO mapping with filtering
             Console.WriteLine("\n3. Active employees only:");
-            var activeEmployees = connection.Query<Employee>("MATCH (e:Employee) WHERE e.is_active = true RETURN e.id, e.name, e.email, e.department, e.salary, e.hire_date, e.is_active");
+            var activeEmployees = connection.Query<Employee>("MATCH (e:Employee) WHERE e.is_active = true RETURN e.id AS id, e.name AS name, e.email AS email, e.department AS department, e.salary AS salary, e.hire_date AS hire_date, e.is_active AS is_active");
             
             foreach (var emp in activeEmployees)
             {
@@ -189,7 +190,7 @@ namespace KuzuDot.Examples.Advanced
 
             // 4. POCO mapping with aggregation
             Console.WriteLine("\n4. Department statistics:");
-            var deptStats = connection.Query<DepartmentStats>("MATCH (e:Employee)-[:WorksIn]->(d:Department) RETURN d.name, COUNT(e) as employee_count, AVG(e.salary) as avg_salary, MAX(e.salary) as max_salary");
+            var deptStats = connection.Query<DepartmentStats>("MATCH (e:Employee)-[:WorksIn]->(d:Department) RETURN d.name AS department_name, COUNT(e) AS employee_count, AVG(e.salary) AS avg_salary, MAX(e.salary) AS max_salary");
             
             foreach (var stat in deptStats)
             {
@@ -200,7 +201,7 @@ namespace KuzuDot.Examples.Advanced
             Console.WriteLine("\n5. Employee with department information:");
             var empDeptInfo = connection.Query<EmployeeDepartmentInfo>(@"
                 MATCH (e:Employee)-[w:WorksIn]->(d:Department) 
-                RETURN e.name, e.salary, d.name as dept_name, w.role, w.start_date");
+                RETURN e.name AS employee_name, e.salary AS salary, d.name AS department_name, w.role AS role, w.start_date AS start_date");
 
             foreach (var info in empDeptInfo)
             {
@@ -212,7 +213,7 @@ namespace KuzuDot.Examples.Advanced
             var highEarners = connection.Query<Employee>(@"
                 MATCH (e:Employee)-[:WorksIn]->(d:Department) 
                 WHERE e.salary > 80000 
-                RETURN e.id, e.name, e.email, e.department, e.salary, e.hire_date, e.is_active
+                RETURN e.id AS id, e.name AS name, e.email AS email, e.department AS department, e.salary AS salary, e.hire_date AS hire_date, e.is_active AS is_active
                 ORDER BY e.salary DESC");
 
             foreach (var emp in highEarners)
@@ -222,7 +223,7 @@ namespace KuzuDot.Examples.Advanced
 
             // 7. POCO mapping with nullable types
             Console.WriteLine("\n7. Employees with nullable salary (demonstrating nullable types):");
-            var employeesWithNullable = connection.Query<EmployeeWithNullable>("MATCH (e:Employee) RETURN e.id, e.name, e.salary, e.hire_date");
+            var employeesWithNullable = connection.Query<EmployeeWithNullable>("MATCH (e:Employee) RETURN e.id AS id, e.name AS name, e.salary AS salary, e.hire_date AS hire_date");
             
             foreach (var emp in employeesWithNullable)
             {
@@ -248,6 +249,175 @@ namespace KuzuDot.Examples.Advanced
                 Console.WriteLine($"  {summary.Name} - {summary.Department}, ${summary.Salary:F0} ({summary.SalaryCategory})");
             }
         }
+
+        private static void DemonstrateNamingStrategies(Connection connection)
+        {
+            Console.WriteLine("\n=== Naming Strategy Examples ===");
+            Console.WriteLine("1. Snake Case Naming Strategy:");
+            
+            // Create a test table with snake_case columns
+            connection.NonQuery(@"
+                CREATE NODE TABLE TestSnakeCase(
+                    user_id INT64,
+                    first_name STRING,
+                    last_name STRING,
+                    birth_year INT32,
+                    email_address STRING,
+                    PRIMARY KEY(user_id)
+                )");
+
+            // POCO class without KuzuName attributes
+            var snakeTestUser = new TestUser
+            {
+                UserId = 1,
+                FirstName = "John",
+                LastName = "Doe",
+                BirthYear = 1990,
+                EmailAddress = "john.doe@example.com"
+            };
+
+            using var snakeStmt = connection.Prepare(@"
+                CREATE (:TestSnakeCase {
+                    user_id: $user_id,
+                    first_name: $first_name,
+                    last_name: $last_name,
+                    birth_year: $birth_year,
+                    email_address: $email_address
+                })");
+
+            // Use snake case naming strategy
+            snakeStmt.BindSnakeCase(snakeTestUser);
+            snakeStmt.Execute();
+            Console.WriteLine("  ✓ Successfully inserted user with snake_case naming strategy");
+
+            Console.WriteLine("\n2. Camel Case Naming Strategy:");
+            
+            // Create a test table with camelCase columns
+            connection.NonQuery(@"
+                CREATE NODE TABLE TestCamelCase(
+                    userId INT64,
+                    firstName STRING,
+                    lastName STRING,
+                    birthYear INT32,
+                    emailAddress STRING,
+                    PRIMARY KEY(userId)
+                )");
+
+            var camelTestUser = new TestUser
+            {
+                UserId = 2,
+                FirstName = "Jane",
+                LastName = "Smith",
+                BirthYear = 1985,
+                EmailAddress = "jane.smith@example.com"
+            };
+
+            using var camelStmt = connection.Prepare(@"
+                CREATE (:TestCamelCase {
+                    userId: $userId,
+                    firstName: $firstName,
+                    lastName: $lastName,
+                    birthYear: $birthYear,
+                    emailAddress: $emailAddress
+                })");
+
+            // Use camel case naming strategy
+            camelStmt.BindCamelCase(camelTestUser);
+            camelStmt.Execute();
+            Console.WriteLine("  ✓ Successfully inserted user with camelCase naming strategy");
+
+            Console.WriteLine("\n3. Pascal Case Naming Strategy:");
+            
+            // Create a test table with PascalCase columns
+            connection.NonQuery(@"
+                CREATE NODE TABLE TestPascalCase(
+                    UserId INT64,
+                    FirstName STRING,
+                    LastName STRING,
+                    BirthYear INT32,
+                    EmailAddress STRING,
+                    PRIMARY KEY(UserId)
+                )");
+
+            var pascalTestUser = new TestUser
+            {
+                UserId = 3,
+                FirstName = "Bob",
+                LastName = "Johnson",
+                BirthYear = 1992,
+                EmailAddress = "bob.johnson@example.com"
+            };
+
+            using var pascalStmt = connection.Prepare(@"
+                CREATE (:TestPascalCase {
+                    UserId: $UserId,
+                    FirstName: $FirstName,
+                    LastName: $LastName,
+                    BirthYear: $BirthYear,
+                    EmailAddress: $EmailAddress
+                })");
+
+            // Use pascal case naming strategy
+            pascalStmt.BindPascalCase(pascalTestUser);
+            pascalStmt.Execute();
+            Console.WriteLine("  ✓ Successfully inserted user with PascalCase naming strategy");
+
+            Console.WriteLine("\n4. Mixed Strategy with KuzuName Override:");
+            
+            var mixedUser = new MixedNamingUser
+            {
+                Id = 1,
+                Name = "Jane Smith",
+                BirthYear = 1985,
+                EmailAddress = "jane.smith@example.com"
+            };
+
+            // Create a test table with mixed naming
+            connection.NonQuery(@"
+                CREATE NODE TABLE TestMixedNaming(
+                    id INT64,
+                    full_name STRING,
+                    birth_year INT32,
+                    email STRING,
+                    PRIMARY KEY(id)
+                )");
+
+            using var mixedStmt = connection.Prepare(@"
+                CREATE (:TestMixedNaming {
+                    id: $id,
+                    full_name: $full_name,
+                    birth_year: $birth_year,
+                    email: $email
+                })");
+
+            // Use snake case strategy, but KuzuName attributes override specific properties
+            mixedStmt.BindSnakeCase(mixedUser);
+            mixedStmt.Execute();
+            Console.WriteLine("  ✓ Successfully inserted user with mixed naming (snake_case + KuzuName overrides)");
+        }
+    }
+
+    // Test POCO classes for naming strategy demonstration
+    public class TestUser
+    {
+        public long UserId { get; set; }
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public int BirthYear { get; set; }
+        public string EmailAddress { get; set; } = string.Empty;
+    }
+
+    public class MixedNamingUser
+    {
+        public long Id { get; set; }
+        
+        [KuzuName("full_name")]  // Override snake_case strategy
+        public string Name { get; set; } = string.Empty;
+        
+        public int BirthYear { get; set; }  // Uses snake_case strategy: birth_year
+        
+        [KuzuName("email")]  // Override snake_case strategy
+        public string EmailAddress { get; set; } = string.Empty;
     }
 
     // POCO classes for mapping
@@ -272,7 +442,7 @@ namespace KuzuDot.Examples.Advanced
 
     public class DepartmentStats
     {
-        [KuzuName("d.name")]
+        [KuzuName("department_name")]
         public string DepartmentName { get; set; } = string.Empty;
         
         [KuzuName("employee_count")]
@@ -287,12 +457,12 @@ namespace KuzuDot.Examples.Advanced
 
     public class EmployeeDepartmentInfo
     {
-        [KuzuName("e.name")]
+        [KuzuName("employee_name")]
         public string EmployeeName { get; set; } = string.Empty;
         
         public double Salary { get; set; }
         
-        [KuzuName("dept_name")]
+        [KuzuName("department_name")]
         public string DepartmentName { get; set; } = string.Empty;
         
         public string Role { get; set; } = string.Empty;

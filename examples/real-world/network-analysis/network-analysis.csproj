@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <Content Include="..\..\..\native\win-x64\kuzu_shared.dll">
-      <Link>runtimes\win-x64\native\kuzu_shared.dll</Link>
+      <Link>kuzu_shared.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

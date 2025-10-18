@@ -969,8 +969,8 @@ var movies = new[]
 using var userStmt = connection.Prepare("CREATE (:User {id: $id, name: $name, age: $age})");
 using var movieStmt = connection.Prepare("CREATE (:Movie {id: $id, title: $title, genre: $genre, year: $year})");
 
-foreach (var user in users) userStmt.Bind(user); userStmt.Execute();
-foreach (var movie in movies) movieStmt.Bind(movie); movieStmt.Execute();
+foreach (var user in users) { userStmt.Bind(user); userStmt.Execute(); }
+foreach (var movie in movies) { movieStmt.Bind(movie); movieStmt.Execute(); }
 
 // Insert ratings
 var ratings = new[]

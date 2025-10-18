@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using KuzuDot;
 
 namespace KuzuDot.Examples.Performance
@@ -8,13 +10,13 @@ namespace KuzuDot.Examples.Performance
     /// </summary>
     public class QueryOptimization
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             Console.WriteLine("=== KuzuDot Query Optimization Example ===");
             
             try
             {
-                RunExample();
+                await RunExample();
             }
             catch (KuzuException ex)
             {
@@ -26,7 +28,7 @@ namespace KuzuDot.Examples.Performance
             }
         }
 
-        private static void RunExample()
+        private static async Task RunExample()
         {
             // Create an in-memory database
             Console.WriteLine("Creating in-memory database...");
@@ -43,7 +45,7 @@ namespace KuzuDot.Examples.Performance
 
             // Demonstrate query optimization
             Console.WriteLine("\n=== Query Optimization Examples ===");
-            DemonstrateQueryOptimization(connection);
+            await DemonstrateQueryOptimization(connection);
 
             Console.WriteLine("\n=== Query Optimization Example completed successfully! ===");
         }
@@ -128,7 +130,13 @@ namespace KuzuDot.Examples.Performance
 
             foreach (var person in persons)
             {
-                personStmt.Bind(person);
+                personStmt.Bind("id", person.Id);
+                personStmt.Bind("name", person.Name);
+                personStmt.Bind("age", person.Age);
+                personStmt.Bind("city", person.City);
+                personStmt.Bind("country", person.Country);
+                personStmt.Bind("email", person.Email);
+                personStmt.BindTimestamp("created_at", person.CreatedAt);
                 personStmt.Execute();
             }
 
@@ -145,7 +153,11 @@ namespace KuzuDot.Examples.Performance
 
             foreach (var company in companies)
             {
-                companyStmt.Bind(company);
+                companyStmt.Bind("id", company.Id);
+                companyStmt.Bind("name", company.Name);
+                companyStmt.Bind("industry", company.Industry);
+                companyStmt.Bind("size", company.Size);
+                companyStmt.Bind("founded_year", company.FoundedYear);
                 companyStmt.Execute();
             }
 
@@ -163,7 +175,12 @@ namespace KuzuDot.Examples.Performance
 
             foreach (var project in projects)
             {
-                projectStmt.Bind(project);
+                projectStmt.Bind("id", project.Id);
+                projectStmt.Bind("name", project.Name);
+                projectStmt.Bind("status", project.Status);
+                projectStmt.Bind("budget", project.Budget);
+                projectStmt.BindDate("start_date", project.StartDate);
+                projectStmt.BindDate("end_date", project.EndDate);
                 projectStmt.Execute();
             }
 
@@ -255,7 +272,7 @@ namespace KuzuDot.Examples.Performance
             }
         }
 
-        private static void DemonstrateQueryOptimization(Connection connection)
+        private static async Task DemonstrateQueryOptimization(Connection connection)
         {
             // 1. Index usage optimization
             Console.WriteLine("1. Index usage optimization:");

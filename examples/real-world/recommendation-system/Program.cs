@@ -138,14 +138,14 @@ namespace KuzuDot.Examples.RealWorld
             // Insert users
             var users = new[]
             {
-                new { Id = 1L, Name = "Alice", Age = 28, Gender = "Female", Location = "New York" },
-                new { Id = 2L, Name = "Bob", Age = 32, Gender = "Male", Location = "San Francisco" },
-                new { Id = 3L, Name = "Charlie", Age = 25, Gender = "Male", Location = "London" },
-                new { Id = 4L, Name = "Diana", Age = 30, Gender = "Female", Location = "Toronto" },
-                new { Id = 5L, Name = "Eve", Age = 27, Gender = "Female", Location = "Sydney" },
-                new { Id = 6L, Name = "Frank", Age = 35, Gender = "Male", Location = "Berlin" },
-                new { Id = 7L, Name = "Grace", Age = 29, Gender = "Female", Location = "Paris" },
-                new { Id = 8L, Name = "Henry", Age = 31, Gender = "Male", Location = "Tokyo" }
+                new UserData { Id = 1L, Name = "Alice", Age = 28, Gender = "Female", Location = "New York" },
+                new UserData { Id = 2L, Name = "Bob", Age = 32, Gender = "Male", Location = "San Francisco" },
+                new UserData { Id = 3L, Name = "Charlie", Age = 25, Gender = "Male", Location = "London" },
+                new UserData { Id = 4L, Name = "Diana", Age = 30, Gender = "Female", Location = "Toronto" },
+                new UserData { Id = 5L, Name = "Eve", Age = 27, Gender = "Female", Location = "Sydney" },
+                new UserData { Id = 6L, Name = "Frank", Age = 35, Gender = "Male", Location = "Berlin" },
+                new UserData { Id = 7L, Name = "Grace", Age = 29, Gender = "Female", Location = "Paris" },
+                new UserData { Id = 8L, Name = "Henry", Age = 31, Gender = "Male", Location = "Tokyo" }
             };
 
             using var userStmt = connection.Prepare("CREATE (:User {id: $id, name: $name, age: $age, gender: $gender, location: $location})");
@@ -177,11 +177,11 @@ namespace KuzuDot.Examples.RealWorld
             // Insert directors
             var directors = new[]
             {
-                new { Id = 1L, Name = "Christopher Nolan", BirthYear = 1970 },
-                new { Id = 2L, Name = "Steven Spielberg", BirthYear = 1946 },
-                new { Id = 3L, Name = "Quentin Tarantino", BirthYear = 1963 },
-                new { Id = 4L, Name = "Martin Scorsese", BirthYear = 1942 },
-                new { Id = 5L, Name = "Ridley Scott", BirthYear = 1937 }
+                new DirectorData { Id = 1L, Name = "Christopher Nolan", BirthYear = 1970 },
+                new DirectorData { Id = 2L, Name = "Steven Spielberg", BirthYear = 1946 },
+                new DirectorData { Id = 3L, Name = "Quentin Tarantino", BirthYear = 1963 },
+                new DirectorData { Id = 4L, Name = "Martin Scorsese", BirthYear = 1942 },
+                new DirectorData { Id = 5L, Name = "Ridley Scott", BirthYear = 1937 }
             };
 
             using var directorStmt = connection.Prepare("CREATE (:Director {id: $id, name: $name, birth_year: $birth_year})");
@@ -194,14 +194,14 @@ namespace KuzuDot.Examples.RealWorld
             // Insert actors
             var actors = new[]
             {
-                new { Id = 1L, Name = "Leonardo DiCaprio", BirthYear = 1974 },
-                new { Id = 2L, Name = "Tom Hanks", BirthYear = 1956 },
-                new { Id = 3L, Name = "Meryl Streep", BirthYear = 1949 },
-                new { Id = 4L, Name = "Brad Pitt", BirthYear = 1963 },
-                new { Id = 5L, Name = "Emma Stone", BirthYear = 1988 },
-                new { Id = 6L, Name = "Ryan Gosling", BirthYear = 1980 },
-                new { Id = 7L, Name = "Scarlett Johansson", BirthYear = 1984 },
-                new { Id = 8L, Name = "Robert Downey Jr.", BirthYear = 1965 }
+                new ActorData { Id = 1L, Name = "Leonardo DiCaprio", BirthYear = 1974 },
+                new ActorData { Id = 2L, Name = "Tom Hanks", BirthYear = 1956 },
+                new ActorData { Id = 3L, Name = "Meryl Streep", BirthYear = 1949 },
+                new ActorData { Id = 4L, Name = "Brad Pitt", BirthYear = 1963 },
+                new ActorData { Id = 5L, Name = "Emma Stone", BirthYear = 1988 },
+                new ActorData { Id = 6L, Name = "Ryan Gosling", BirthYear = 1980 },
+                new ActorData { Id = 7L, Name = "Scarlett Johansson", BirthYear = 1984 },
+                new ActorData { Id = 8L, Name = "Robert Downey Jr.", BirthYear = 1965 }
             };
 
             using var actorStmt = connection.Prepare("CREATE (:Actor {id: $id, name: $name, birth_year: $birth_year})");
@@ -214,16 +214,16 @@ namespace KuzuDot.Examples.RealWorld
             // Insert movies
             var movies = new[]
             {
-                new { Id = 1L, Title = "Inception", Genre = "Sci-Fi", Year = 2010, Rating = 8.8 },
-                new { Id = 2L, Title = "The Dark Knight", Genre = "Action", Year = 2008, Rating = 9.0 },
-                new { Id = 3L, Title = "Interstellar", Genre = "Sci-Fi", Year = 2014, Rating = 8.6 },
-                new { Id = 4L, Title = "Saving Private Ryan", Genre = "Drama", Year = 1998, Rating = 8.6 },
-                new { Id = 5L, Title = "Pulp Fiction", Genre = "Crime", Year = 1994, Rating = 8.9 },
-                new { Id = 6L, Title = "Goodfellas", Genre = "Crime", Year = 1990, Rating = 8.7 },
-                new { Id = 7L, Title = "Alien", Genre = "Horror", Year = 1979, Rating = 8.5 },
-                new { Id = 8L, Title = "Blade Runner", Genre = "Sci-Fi", Year = 1982, Rating = 8.1 },
-                new { Id = 9L, Title = "The Wolf of Wall Street", Genre = "Drama", Year = 2013, Rating = 8.2 },
-                new { Id = 10L, Title = "La La Land", Genre = "Romance", Year = 2016, Rating = 8.0 }
+                new MovieData { Id = 1L, Title = "Inception", Genre = "Sci-Fi", Year = 2010, Rating = 8.8 },
+                new MovieData { Id = 2L, Title = "The Dark Knight", Genre = "Action", Year = 2008, Rating = 9.0 },
+                new MovieData { Id = 3L, Title = "Interstellar", Genre = "Sci-Fi", Year = 2014, Rating = 8.6 },
+                new MovieData { Id = 4L, Title = "Saving Private Ryan", Genre = "Drama", Year = 1998, Rating = 8.6 },
+                new MovieData { Id = 5L, Title = "Pulp Fiction", Genre = "Crime", Year = 1994, Rating = 8.9 },
+                new MovieData { Id = 6L, Title = "Goodfellas", Genre = "Crime", Year = 1990, Rating = 8.7 },
+                new MovieData { Id = 7L, Title = "Alien", Genre = "Horror", Year = 1979, Rating = 8.5 },
+                new MovieData { Id = 8L, Title = "Blade Runner", Genre = "Sci-Fi", Year = 1982, Rating = 8.1 },
+                new MovieData { Id = 9L, Title = "The Wolf of Wall Street", Genre = "Drama", Year = 2013, Rating = 8.2 },
+                new MovieData { Id = 10L, Title = "La La Land", Genre = "Romance", Year = 2016, Rating = 8.0 }
             };
 
             using var movieStmt = connection.Prepare("CREATE (:Movie {id: $id, title: $title, genre: $genre, year: $year, rating: $rating})");
@@ -574,5 +574,47 @@ namespace KuzuDot.Examples.RealWorld
                 Console.WriteLine($"  '{movieTitle}' ({genre}) - Rating: {rating}, Liked by {youngUsers} young users and {olderUsers} older users");
             }
         }
+    }
+
+    // POCO classes with KuzuName attributes for proper parameter binding
+    public class UserData
+    {
+        public long Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int Age { get; set; }
+        public string Gender { get; set; } = string.Empty;
+        public string Location { get; set; } = string.Empty;
+    }
+
+    public class GenreData
+    {
+        public long Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+    }
+
+    public class DirectorData
+    {
+        public long Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        [KuzuName("birth_year")]
+        public int BirthYear { get; set; }
+    }
+
+    public class ActorData
+    {
+        public long Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        [KuzuName("birth_year")]
+        public int BirthYear { get; set; }
+    }
+
+    public class MovieData
+    {
+        public long Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public int Year { get; set; }
+        public double Rating { get; set; }
+        public string Genre { get; set; } = string.Empty;
     }
 }

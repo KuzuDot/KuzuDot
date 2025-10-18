@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using KuzuDot;
 
 namespace KuzuDot.Examples.Advanced
@@ -232,20 +235,18 @@ namespace KuzuDot.Examples.Advanced
 
             // 4. Parallel async operations
             Console.WriteLine("\n4. Parallel async operations - Multiple queries:");
-            var tasks = new[]
-            {
-                GetArticleCountAsync(connection),
-                GetTotalReadsAsync(connection),
-                GetMostPopularArticleAsync(connection),
-                GetRecentArticlesAsync(connection)
-            };
-
-            var results = await Task.WhenAll(tasks);
             
-            Console.WriteLine($"  Total articles: {results[0]}");
-            Console.WriteLine($"  Total reads: {results[1]}");
-            Console.WriteLine($"  Most popular: {results[2]}");
-            Console.WriteLine($"  Recent articles: {results[3]}");
+            var articleCountTask = GetArticleCountAsync(connection);
+            var totalReadsTask = GetTotalReadsAsync(connection);
+            var mostPopularTask = GetMostPopularArticleAsync(connection);
+            var recentArticlesTask = GetRecentArticlesAsync(connection);
+            
+            await Task.WhenAll(articleCountTask, totalReadsTask, mostPopularTask, recentArticlesTask);
+            
+            Console.WriteLine($"  Total articles: {articleCountTask.Result}");
+            Console.WriteLine($"  Total reads: {totalReadsTask.Result}");
+            Console.WriteLine($"  Most popular: {mostPopularTask.Result}");
+            Console.WriteLine($"  Recent articles: {recentArticlesTask.Result}");
 
             // 5. Async with cancellation
             Console.WriteLine("\n5. Async with cancellation - Long running query:");

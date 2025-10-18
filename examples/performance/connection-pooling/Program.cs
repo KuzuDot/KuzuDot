@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using KuzuDot;
 
 namespace KuzuDot.Examples.Performance
@@ -8,13 +10,13 @@ namespace KuzuDot.Examples.Performance
     /// </summary>
     public class ConnectionPooling
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             Console.WriteLine("=== KuzuDot Connection Pooling Example ===");
             
             try
             {
-                RunExample();
+                await RunExample();
             }
             catch (KuzuException ex)
             {
@@ -26,7 +28,7 @@ namespace KuzuDot.Examples.Performance
             }
         }
 
-        private static void RunExample()
+        private static async Task RunExample()
         {
             // Create an in-memory database
             Console.WriteLine("Creating in-memory database...");
@@ -38,7 +40,7 @@ namespace KuzuDot.Examples.Performance
 
             // Demonstrate connection pooling
             Console.WriteLine("\n=== Connection Pooling Examples ===");
-            DemonstrateConnectionPooling(database);
+            await DemonstrateConnectionPooling(database);
 
             Console.WriteLine("\n=== Connection Pooling Example completed successfully! ===");
         }
@@ -71,7 +73,7 @@ namespace KuzuDot.Examples.Performance
                 )");
         }
 
-        private static void DemonstrateConnectionPooling(Database database)
+        private static async Task DemonstrateConnectionPooling(Database database)
         {
             // 1. Basic connection pooling
             Console.WriteLine("1. Basic connection pooling:");
@@ -109,29 +111,34 @@ namespace KuzuDot.Examples.Performance
                     Console.WriteLine($"  Created connection {i + 1}");
                 }
 
-                // Use connections for different operations
-                var tasks = new List<Task>();
+                // Use connections sequentially (KuzuDB only allows one write transaction at a time)
                 for (int i = 0; i < connectionCount; i++)
                 {
-                    var connectionIndex = i;
-                    var task = Task.Run(() =>
-                    {
-                        var connection = connections[connectionIndex];
-                        
-                        // Insert tasks
-                        for (int j = 0; j < 10; j++)
-                        {
-                            var taskId = connectionIndex * 10 + j + 1;
-                            connection.NonQuery($"CREATE (:Task {{id: {taskId}, name: 'Task{taskId}', priority: {Random.Shared.Next(1, 6)}, status: 'Pending', created_at: datetime()}})");
-                        }
-                        
-                        Console.WriteLine($"  Connection {connectionIndex + 1} inserted 10 tasks");
-                    });
+                    var connection = connections[i];
                     
-                    tasks.Add(task);
+                    // Insert tasks using prepared statement
+                    using var taskStmt = connection.Prepare(@"
+                        CREATE (:Task {
+                            id: $id, 
+                            name: $name, 
+                            priority: $priority,
+                            status: $status,
+                            created_at: $created_at
+                        })");
+                    
+                    for (int j = 0; j < 10; j++)
+                    {
+                        var taskId = i * 10 + j + 1;
+                        taskStmt.Bind("id", taskId);
+                        taskStmt.Bind("name", $"Task{taskId}");
+                        taskStmt.Bind("priority", Random.Shared.Next(1, 6));
+                        taskStmt.Bind("status", "Pending");
+                        taskStmt.BindTimestamp("created_at", DateTime.UtcNow);
+                        taskStmt.Execute();
+                    }
+                    
+                    Console.WriteLine($"  Connection {i + 1} inserted 10 tasks");
                 }
-
-                await Task.WhenAll(tasks);
                 Console.WriteLine($"  All {connectionCount} connections completed their operations");
             }
             finally
@@ -162,41 +169,49 @@ namespace KuzuDot.Examples.Performance
                     connection.NonQuery($"CREATE (:Worker {{id: {i + 1}, name: 'Worker{i + 1}', department: 'Dept{(i % 3) + 1}'}})");
                 }
 
-                // Simulate concurrent task processing
-                var tasks = new List<Task>();
+                // Simulate sequential task processing (KuzuDB only allows one write transaction at a time)
                 for (int i = 0; i < workerCount; i++)
                 {
-                    var connectionIndex = i;
-                    var task = Task.Run(async () =>
-                    {
-                        var connection = connections[connectionIndex];
-                        var workerId = connectionIndex + 1;
-                        
-                        // Process tasks assigned to this worker
-                        for (int j = 0; j < 5; j++)
-                        {
-                            var taskId = connectionIndex * 5 + j + 1;
-                            
-                            // Assign task to worker
-                            connection.NonQuery($"MATCH (t:Task), (w:Worker) WHERE t.id = {taskId} AND w.id = {workerId} CREATE (t)-[:AssignedTo {{assigned_at: datetime()}}]->(w)");
-                            
-                            // Update task status
-                            connection.NonQuery($"MATCH (t:Task) WHERE t.id = {taskId} SET t.status = 'In Progress'");
-                            
-                            // Simulate work
-                            await Task.Delay(100);
-                            
-                            // Complete task
-                            connection.NonQuery($"MATCH (t:Task) WHERE t.id = {taskId} SET t.status = 'Completed'");
-                            
-                            Console.WriteLine($"  Worker {workerId} completed task {taskId}");
-                        }
-                    });
+                    var connection = connections[i];
+                    var workerId = i + 1;
                     
-                    tasks.Add(task);
+                    // Process tasks assigned to this worker
+                    using var assignStmt = connection.Prepare(@"
+                        MATCH (t:Task), (w:Worker) 
+                        WHERE t.id = $task_id AND w.id = $worker_id 
+                        CREATE (t)-[:AssignedTo {assigned_at: $assigned_at}]->(w)");
+                    
+                    using var updateStatusStmt = connection.Prepare(@"
+                        MATCH (t:Task) 
+                        WHERE t.id = $task_id 
+                        SET t.status = $status");
+                    
+                    for (int j = 0; j < 5; j++)
+                    {
+                        var taskId = i * 5 + j + 1;
+                        
+                        // Assign task to worker
+                        assignStmt.Bind("task_id", taskId);
+                        assignStmt.Bind("worker_id", workerId);
+                        assignStmt.BindTimestamp("assigned_at", DateTime.UtcNow);
+                        assignStmt.Execute();
+                        
+                        // Update task status
+                        updateStatusStmt.Bind("task_id", taskId);
+                        updateStatusStmt.Bind("status", "In Progress");
+                        updateStatusStmt.Execute();
+                        
+                        // Simulate work
+                        await Task.Delay(100);
+                        
+                        // Complete task
+                        updateStatusStmt.Bind("task_id", taskId);
+                        updateStatusStmt.Bind("status", "Completed");
+                        updateStatusStmt.Execute();
+                        
+                        Console.WriteLine($"  Worker {workerId} completed task {taskId}");
+                    }
                 }
-
-                await Task.WhenAll(tasks);
                 Console.WriteLine("  All workers completed their tasks");
             }
             finally
