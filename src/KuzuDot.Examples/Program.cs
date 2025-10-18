@@ -62,8 +62,11 @@ namespace KuzuDot.Examples
             long count = connection.ExecuteScalar<long>("MATCH (p:Person) RETURN COUNT(*)");
             ExampleLog.Info($"Person count (ExecuteScalar): {count}");
             // Ergonomic: POCO mapping
-            var people = connection.Query<Person>("MATCH (p:Person) RETURN p.name, p.age");
+            var people = connection.Query<Person>("MATCH (p:Person) RETURN p.name AS name, p.age AS age");
             foreach (var p in people) ExampleLog.Info($"Person: {p.name}, Age: {p.age}");
+            // Ergonomic2: POCO mapping
+            var pet = connection.Query<Pet>("MATCH (p:Person) RETURN p");
+            foreach (var p in pet) ExampleLog.Info($"Pet: {p.name}, Age: {p.age}");
             // Async query example
             var asyncTask = connection.QueryAsync("MATCH (p:Person) RETURN p.name, p.age");
             asyncTask.Wait();
