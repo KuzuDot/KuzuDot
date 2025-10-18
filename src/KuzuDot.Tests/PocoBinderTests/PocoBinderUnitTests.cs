@@ -96,6 +96,26 @@ namespace KuzuDot.Tests.PocoBinderTests
             catch (OperationCanceledException) { }
         }
 
+        [TestMethod]
+        public void QueryT_MatchWithSpecificValues_MapsToPoco()
+        {
+            // Seed data with specific values
+            using (var ps = _conn.Prepare("CREATE (:Person {name: $name, age: $age});"))
+            {
+                ps.Bind(new PersonInsert { Name = "test", Age = 34 });
+                using var r = ps.Execute();
+                Assert.IsTrue(r.IsSuccess);
+            }
+
+            // Query with MATCH using specific values and map to POCO
+            var people = _conn.Query<Person>("MATCH (p:Person) RETURN p");
+            
+            Assert.IsTrue(people.Count > 0, "Expected at least one person to be returned");
+            var person = people[0];
+            Assert.AreEqual("test", person.Name);
+            Assert.AreEqual(34L, person.Age);
+        }
+
         private sealed class PersonInsert
         {
             public string Name { get; set; } = string.Empty;
@@ -118,6 +138,14 @@ namespace KuzuDot.Tests.PocoBinderTests
         {
             [KuzuName("name_alias")] public string Name { get; set; } = string.Empty;
             [KuzuName("years")] public long Years { get; set; }
+        }
+
+        private sealed class Person
+        {
+            public string Name { get; set; } = string.Empty;
+            public long Age { get; set; }
+
+            public string EyeColor { get; set; } = string.Empty;
         }
 
         public void Dispose()

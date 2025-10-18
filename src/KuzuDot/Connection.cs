@@ -273,7 +273,7 @@ namespace KuzuDot
                     using var value = row.GetValue((ulong)c);
                     if (value.DataTypeId == KuzuDataTypeId.KuzuNode)
                     {
-                        using KuzuNode aKuzuNode = (KuzuNode)KuzuNode.FromNative(value.NativePtr);
+                        using KuzuNode aKuzuNode = (KuzuNode)KuzuValue.FromNativeStruct(value.Handle.NativeStruct);
                         //if(aKuzuNode.Label==typeof(T).Name) // use this to match Label to <T> typeName
                         if (true)
                         {
