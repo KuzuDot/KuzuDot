@@ -240,8 +240,8 @@ namespace KuzuDot.Tests.PocoBinderTests
             // Query and verify mapping works
             var users = _conn.Query<TestUser>("MATCH (u:SnakeCaseUser) RETURN u.user_id AS user_id, u.first_name AS first_name, u.last_name AS last_name, u.email_address AS email_address, u.birth_year AS birth_year, u.is_active AS is_active, u.created_at AS created_at");
             
-            Assert.IsTrue(users.Count > 0);
-            var user = users.First();
+            Assert.IsNotEmpty(users);
+            var user = users[0];
             Assert.AreEqual(10L, user.UserId);
             Assert.AreEqual("Grace", user.FirstName);
             Assert.AreEqual("Lee", user.LastName);
@@ -274,8 +274,8 @@ namespace KuzuDot.Tests.PocoBinderTests
             // Query using POCO with KuzuName attributes
             var users = _conn.Query<TestUserWithAttributes>("MATCH (u:SnakeCaseUser) RETURN u.user_id AS user_id, u.first_name AS first_name, u.last_name AS last_name, u.email_address AS email_address, u.birth_year AS birth_year, u.is_active AS is_active, u.created_at AS created_at");
             
-            Assert.IsTrue(users.Count > 0);
-            var user = users.First();
+            Assert.IsNotEmpty(users);
+            var user = users[0];
             Assert.AreEqual(11L, user.Id); // Mapped via KuzuName attribute
             Assert.AreEqual("Henry", user.Name); // Mapped via KuzuName attribute
             Assert.AreEqual("Davis", user.Surname); // Mapped via KuzuName attribute
@@ -308,8 +308,8 @@ namespace KuzuDot.Tests.PocoBinderTests
             // Query using POCO with nullable types
             var users = _conn.Query<TestUserWithNullable>("MATCH (u:SnakeCaseUser) RETURN u.user_id AS user_id, u.first_name AS first_name, u.last_name AS last_name, u.email_address AS email_address, u.birth_year AS birth_year, u.is_active AS is_active, u.created_at AS created_at");
             
-            Assert.IsTrue(users.Count > 0);
-            var user = users.First();
+            Assert.IsNotEmpty(users);
+            var user = users[0];
             Assert.AreEqual(12L, user.UserId);
             Assert.AreEqual("Iris", user.FirstName);
             Assert.AreEqual("Taylor", user.LastName);

@@ -55,9 +55,7 @@ namespace KuzuDot.Examples.Basic
             using var insertStmt = connection.Prepare("CREATE (:Person {name: $name, age: $age, city: $city})");
             foreach (var person in people)
             {
-                insertStmt.Bind("name", person.Name);
-                insertStmt.Bind("age", person.Age);
-                insertStmt.Bind("city", person.City);
+                insertStmt.Bind(person);
                 insertStmt.Execute();
                 Console.WriteLine($"  Inserted: {person.Name}");
             }

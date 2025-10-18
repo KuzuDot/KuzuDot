@@ -1010,5 +1010,3 @@ while (similarUsersResult.HasNext())
     Console.WriteLine($"{userName} rated '{movieTitle}' {userRating} (Alice rated it {aliceRating})");
 }
 ```
-
-This comprehensive examples guide demonstrates the full range of KuzuDot capabilities, from basic operations to complex real-world scenarios. Each example includes proper resource management and error handling patterns.

@@ -22,6 +22,11 @@ namespace KuzuDot.Examples.RealWorld
             {
                 Console.WriteLine($"KuzuDB Error: {ex.Message}");
             }
+            catch (ArgumentException ex)
+            {
+                Console.WriteLine($"Binding Error: {ex.Message}");
+                Console.WriteLine("This indicates an incorrect usage of PreparedStatement.Bind()");
+            }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error: {ex.Message}");
@@ -168,7 +173,6 @@ namespace KuzuDot.Examples.RealWorld
         private static void InsertSampleData(Connection connection)
         {
             // Insert routers
-            var routers = GenerateRouters(20);
             using var routerStmt = connection.Prepare(@"
                 CREATE (:Router {
                     id: $id, 
@@ -178,18 +182,11 @@ namespace KuzuDot.Examples.RealWorld
                     location: $location
                 })");
 
-            foreach (var router in routers)
-            {
-                routerStmt.Bind("id", router.Id);
-                routerStmt.Bind("name", router.Name);
-                routerStmt.Bind("model", router.Model);
-                routerStmt.Bind("ip_address", router.IpAddress);
-                routerStmt.Bind("location", router.Location);
-                routerStmt.Execute();
-            }
+            var routers = GenerateRouters(20);
+            var routerCount = routerStmt.BindAndExecuteBatch(routers);
+            Console.WriteLine($"  Inserted {routerCount} routers");
 
             // Insert switches
-            var switches = GenerateSwitches(30);
             using var switchStmt = connection.Prepare(@"
                 CREATE (:Switch {
                     id: $id, 
@@ -199,18 +196,11 @@ namespace KuzuDot.Examples.RealWorld
                     location: $location
                 })");
 
-            foreach (var networkSwitch in switches)
-            {
-                switchStmt.Bind("id", networkSwitch.Id);
-                switchStmt.Bind("name", networkSwitch.Name);
-                switchStmt.Bind("model", networkSwitch.Model);
-                switchStmt.Bind("port_count", networkSwitch.PortCount);
-                switchStmt.Bind("location", networkSwitch.Location);
-                switchStmt.Execute();
-            }
+            var switches = GenerateSwitches(30);
+            var switchCount = switchStmt.BindAndExecuteBatch(switches);
+            Console.WriteLine($"  Inserted {switchCount} switches");
 
             // Insert servers
-            var servers = GenerateServers(50);
             using var serverStmt = connection.Prepare(@"
                 CREATE (:Server {
                     id: $id, 
@@ -221,16 +211,9 @@ namespace KuzuDot.Examples.RealWorld
                     location: $location
                 })");
 
-            foreach (var server in servers)
-            {
-                serverStmt.Bind("id", server.Id);
-                serverStmt.Bind("name", server.Name);
-                serverStmt.Bind("os", server.Os);
-                serverStmt.Bind("cpu_cores", server.CpuCores);
-                serverStmt.Bind("memory_gb", server.MemoryGb);
-                serverStmt.Bind("location", server.Location);
-                serverStmt.Execute();
-            }
+            var servers = GenerateServers(50);
+            var serverCount = serverStmt.BindAndExecuteBatch(servers);
+            Console.WriteLine($"  Inserted {serverCount} servers");
 
             // Insert users
             var users = GenerateUsers(100);
@@ -243,15 +226,8 @@ namespace KuzuDot.Examples.RealWorld
                     last_login: $last_login
                 })");
 
-            foreach (var user in users)
-            {
-                userStmt.Bind("id", user.Id);
-                userStmt.Bind("username", user.Username);
-                userStmt.Bind("department", user.Department);
-                userStmt.Bind("role", user.Role);
-                userStmt.BindTimestamp("last_login", user.LastLogin);
-                userStmt.Execute();
-            }
+            var userCount = userStmt.BindAndExecuteBatch(users);
+            Console.WriteLine($"  Inserted {userCount} users");
 
             Console.WriteLine("  Created routers, switches, servers, and users");
 
@@ -411,8 +387,8 @@ namespace KuzuDot.Examples.RealWorld
         {
             // Find network hubs (nodes with most connections)
             using var hubsResult = connection.Query(@"
-                MATCH (n:Node)-[:ConnectedTo]->(connected)
-                RETURN n.name, n.node_type, COUNT(connected) as connection_count
+                MATCH (n)-[:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(connected)
+                RETURN n.name, LABELS(n)[0] as node_type, COUNT(connected) as connection_count
                 ORDER BY connection_count DESC
                 LIMIT 10");
 
@@ -429,9 +405,10 @@ namespace KuzuDot.Examples.RealWorld
 
             // Find isolated nodes
             using var isolatedResult = connection.Query(@"
-                MATCH (n:Node)
-                WHERE NOT (n)-[:ConnectedTo]->() AND NOT ()-[:ConnectedTo]->(n)
-                RETURN n.name, n.node_type
+                MATCH (n)
+                WHERE NOT (n)-[:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->() 
+                AND NOT ()-[:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(n)
+                RETURN n.name, LABELS(n)[0] as node_type
                 LIMIT 10");
 
             Console.WriteLine("  Isolated nodes:");
@@ -446,7 +423,7 @@ namespace KuzuDot.Examples.RealWorld
 
             // Find network segments
             using var segmentsResult = connection.Query(@"
-                MATCH (n:Node)-[:ConnectedTo]->(connected)
+                MATCH (n)-[:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(connected)
                 WITH n, COLLECT(connected) as connections
                 WHERE SIZE(connections) > 5
                 RETURN n.name, SIZE(connections) as segment_size
@@ -485,9 +462,9 @@ namespace KuzuDot.Examples.RealWorld
 
             // Find critical nodes (nodes whose removal would disconnect the network)
             using var criticalResult = connection.Query(@"
-                MATCH (n:Node)-[:ConnectedTo]->(connected)
+                MATCH (n)-[:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(connected)
                 WITH n, COUNT(connected) as outbound_connections
-                MATCH (connected)-[:ConnectedTo]->(n)
+                MATCH (connected)-[:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(n)
                 WITH n, outbound_connections, COUNT(connected) as inbound_connections
                 WHERE outbound_connections > 3 OR inbound_connections > 3
                 RETURN n.name, outbound_connections, inbound_connections
@@ -507,7 +484,7 @@ namespace KuzuDot.Examples.RealWorld
 
             // Find network bridges
             using var bridgesResult = connection.Query(@"
-                MATCH (n:Node)-[:ConnectedTo]->(connected)
+                MATCH (n)-[:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(connected)
                 WITH n, connected, COUNT(*) as connection_count
                 WHERE connection_count = 1
                 RETURN n.name, connected.name, connection_count
@@ -529,7 +506,7 @@ namespace KuzuDot.Examples.RealWorld
         {
             // Find high-latency connections
             using var latencyResult = connection.Query(@"
-                MATCH (n1:Node)-[c:ConnectedTo]->(n2:Node)
+                MATCH (n1)-[c:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(n2)
                 WHERE c.latency > 5.0
                 RETURN n1.name, n2.name, c.latency, c.bandwidth
                 ORDER BY c.latency DESC
@@ -549,7 +526,7 @@ namespace KuzuDot.Examples.RealWorld
 
             // Find low-bandwidth connections
             using var bandwidthResult = connection.Query(@"
-                MATCH (n1:Node)-[c:ConnectedTo]->(n2:Node)
+                MATCH (n1)-[c:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(n2)
                 WHERE c.bandwidth < 50.0
                 RETURN n1.name, n2.name, c.bandwidth, c.latency
                 ORDER BY c.bandwidth ASC
@@ -569,7 +546,7 @@ namespace KuzuDot.Examples.RealWorld
 
             // Find performance bottlenecks
             using var bottleneckResult = connection.Query(@"
-                MATCH (n:Node)-[c:ConnectedTo]->(connected)
+                MATCH (n)-[c:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(connected)
                 WITH n, AVG(c.latency) as avg_latency, AVG(c.bandwidth) as avg_bandwidth
                 WHERE avg_latency > 3.0 OR avg_bandwidth < 100.0
                 RETURN n.name, avg_latency, avg_bandwidth
@@ -691,7 +668,7 @@ namespace KuzuDot.Examples.RealWorld
 
             // Find network capacity utilization
             using var capacityResult = connection.Query(@"
-                MATCH (n1:Node)-[c:ConnectedTo]->(n2:Node)
+                MATCH (n1)-[c:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(n2)
                 WITH n1, AVG(c.bandwidth) as avg_bandwidth
                 WHERE avg_bandwidth < 100.0
                 RETURN n1.name, avg_bandwidth
@@ -713,9 +690,9 @@ namespace KuzuDot.Examples.RealWorld
         {
             // Find single points of failure
             using var spofResult = connection.Query(@"
-                MATCH (n:Node)-[:ConnectedTo]->(connected)
+                MATCH (n)-[:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(connected)
                 WITH n, COUNT(connected) as outbound_connections
-                MATCH (connected)-[:ConnectedTo]->(n)
+                MATCH (connected)-[:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(n)
                 WITH n, outbound_connections, COUNT(connected) as inbound_connections
                 WHERE outbound_connections = 1 OR inbound_connections = 1
                 RETURN n.name, outbound_connections, inbound_connections
@@ -735,8 +712,8 @@ namespace KuzuDot.Examples.RealWorld
 
             // Find redundant connections
             using var redundantResult = connection.Query(@"
-                MATCH (n1:Node)-[:ConnectedTo]->(n2:Node)
-                MATCH (n2)-[:ConnectedTo]->(n1)
+                MATCH (n1)-[:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(n2)
+                MATCH (n2)-[:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(n1)
                 RETURN n1.name, n2.name, 'Bidirectional' as connection_type
                 LIMIT 10");
 
@@ -753,7 +730,7 @@ namespace KuzuDot.Examples.RealWorld
 
             // Find network resilience
             using var resilienceResult = connection.Query(@"
-                MATCH (n:Node)-[:ConnectedTo]->(connected)
+                MATCH (n)-[:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(connected)
                 WITH n, COUNT(connected) as connection_count
                 WHERE connection_count > 3
                 RETURN n.name, connection_count
@@ -831,7 +808,7 @@ namespace KuzuDot.Examples.RealWorld
         {
             // Find optimization opportunities
             using var optimizationResult = connection.Query(@"
-                MATCH (n1:Node)-[c:ConnectedTo]->(n2:Node)
+                MATCH (n1)-[c:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(n2)
                 WHERE c.latency > 5.0 AND c.bandwidth < 100.0
                 RETURN n1.name, n2.name, c.latency, c.bandwidth,
                        (c.latency * c.bandwidth) as optimization_score
@@ -853,7 +830,7 @@ namespace KuzuDot.Examples.RealWorld
 
             // Find load balancing opportunities
             using var loadBalanceResult = connection.Query(@"
-                MATCH (n:Node)-[c:ConnectedTo]->(connected)
+                MATCH (n)-[c:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(connected)
                 WITH n, COUNT(connected) as connection_count, AVG(c.bandwidth) as avg_bandwidth
                 WHERE connection_count > 5 AND avg_bandwidth < 50.0
                 RETURN n.name, connection_count, avg_bandwidth
@@ -873,7 +850,7 @@ namespace KuzuDot.Examples.RealWorld
 
             // Find network efficiency metrics
             using var efficiencyResult = connection.Query(@"
-                MATCH (n:Node)-[c:ConnectedTo]->(connected)
+                MATCH (n)-[c:ConnectedTo|:SwitchToRouter|:ServerToSwitch]->(connected)
                 WITH n, COUNT(connected) as connection_count, 
                      AVG(c.bandwidth) as avg_bandwidth, 
                      AVG(c.latency) as avg_latency
