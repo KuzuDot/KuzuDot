@@ -97,7 +97,7 @@ namespace KuzuDot.Tests.PocoBinderTests
         }
 
         [TestMethod]
-        public void QueryT_MatchWithSpecificValues_MapsToPoco()
+        public void QueryT_MatchStrippedPrefixes_MapsToPoco()
         {
             // Seed data with specific values
             using (var ps = _conn.Prepare("CREATE (:Person {name: $name, age: $age});"))
@@ -108,12 +108,13 @@ namespace KuzuDot.Tests.PocoBinderTests
             }
 
             // Query with MATCH using specific values and map to POCO
-            var people = _conn.Query<Person>("MATCH (p:Person) RETURN p");
+            var people = _conn.Query<Person>("MATCH (p:Person) RETURN p.name, p.age");
             
-            Assert.IsTrue(people.Count > 0, "Expected at least one person to be returned");
+            Assert.IsNotEmpty(people, "Expected at least one person to be returned");
             var person = people[0];
             Assert.AreEqual("test", person.Name);
             Assert.AreEqual(34L, person.Age);
+            Assert.AreEqual(string.Empty, person.EyeColor); // Default value for unmapped property
         }
 
         private sealed class PersonInsert

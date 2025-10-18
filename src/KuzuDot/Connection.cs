@@ -274,8 +274,8 @@ namespace KuzuDot
                     if (value.DataTypeId == KuzuDataTypeId.KuzuNode)
                     {
                         using KuzuNode aKuzuNode = (KuzuNode)KuzuValue.FromNativeStruct(value.Handle.NativeStruct);
-                        //if(aKuzuNode.Label==typeof(T).Name) // use this to match Label to <T> typeName
-                        if (true)
+                        if(aKuzuNode.Label==typeof(T).Name) // use this to match Label to <T> typeName
+                        //if (true)
                         {
                             foreach (var aProp in aKuzuNode.Properties)
                             {
@@ -306,6 +306,8 @@ namespace KuzuDot
                     else
                     {
                         var colName = columnNames[c];
+                        
+                        // Try exact match first
                         if (propMap.TryGetValue(colName, out var prop))
                         {
                             try
@@ -326,6 +328,34 @@ namespace KuzuDot
                             }
                             catch (System.InvalidCastException) { }
                             catch (System.FormatException) { }
+                            continue;
+                        }
+                        
+                        // Try with stripped prefix (e.g., "p.name" -> "name")
+                        var strippedName = StripColumnPrefix(colName);
+                        if (strippedName != colName)
+                        {
+                            if (propMap.TryGetValue(strippedName, out prop))
+                            {
+                                try
+                                {
+                                    var converted = KuzuValue.ConvertKuzuValue(prop.PropertyType, value);
+                                    prop.SetValue(instance, converted);
+                                }
+                                catch (System.InvalidCastException) { }
+                                catch (System.FormatException) { }
+                                continue;
+                            }
+                            if (fieldMap.TryGetValue(strippedName, out field))
+                            {
+                                try
+                                {
+                                    var converted = KuzuValue.ConvertKuzuValue(field.FieldType, value);
+                                    field.SetValue(instance, converted);
+                                }
+                                catch (System.InvalidCastException) { }
+                                catch (System.FormatException) { }
+                            }
                         }
                     }
                 }
@@ -355,6 +385,28 @@ namespace KuzuDot
                     throw;
                 }
             }, cancellationToken);
+
+        /// <summary>
+        /// Strips common column prefixes from column names to improve POCO mapping.
+        /// Examples: "p.name" -> "name", "a.age" -> "age", "user.email" -> "email"
+        /// </summary>
+        private static string StripColumnPrefix(string columnName)
+        {
+            if (string.IsNullOrEmpty(columnName))
+                return columnName;
+
+            // Look for the first dot in the column name
+#pragma warning disable CA1307 // Specify StringComparison for clarity
+            var dotIndex = columnName.IndexOf('.');
+#pragma warning restore CA1307 // Specify StringComparison for clarity
+            if (dotIndex > 0 && dotIndex < columnName.Length - 1)
+            {
+                // Extract the part after the dot
+                return columnName.Substring(dotIndex + 1);
+            }
+
+            return columnName;
+        }
 
         /// <summary>
         /// Async wrapper for <see cref="Query"/> using Task.Run (initial implementation; no true async I/O yet).
