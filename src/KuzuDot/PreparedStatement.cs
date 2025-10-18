@@ -9,7 +9,7 @@ namespace KuzuDot
 {
     public sealed partial class PreparedStatement : IDisposable
     {
-        private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, MemberBinding[]> _typeCache = new();
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<(Type, NamingStrategy), MemberBinding[]> _typeCache = new();
 
         private readonly Connection _connection;
 
@@ -46,40 +46,61 @@ namespace KuzuDot
 
         public PreparedStatement Bind(object parameters)
         {
+            return Bind(parameters, NamingStrategy.SnakeCase);
+        }
+
+        public PreparedStatement Bind(object parameters, NamingStrategy strategy)
+        {
             ThrowIfDisposed();
             KuzuGuard.NotNull(parameters, nameof(parameters));
             var type = parameters.GetType();
-            var bindings = _typeCache.GetOrAdd(type, t =>
+            var bindings = _typeCache.GetOrAdd((type, strategy), key =>
             {
                 var list = new System.Collections.Generic.List<MemberBinding>();
-                var props = t.GetProperties(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                var props = key.Item1.GetProperties(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
                 foreach (var p in props)
                 {
                     if (!p.CanRead) continue;
 
                     var attr = (KuzuNameAttribute?)Attribute.GetCustomAttribute(p, typeof(KuzuNameAttribute));
                     var logical = attr?.Name ?? p.Name;
-                    var normalized = NormalizeParam(logical);
+                    var normalized = NormalizeParam(logical, key.Item2);
                     if (normalized.Length > 0)
                         list.Add(new MemberBinding(normalized, true, p));
                 }
-                var fields = t.GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                var fields = key.Item1.GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
                 foreach (var f in fields)
                 {
                     var attr = (KuzuNameAttribute?)Attribute.GetCustomAttribute(f, typeof(KuzuNameAttribute));
                     var logical = attr?.Name ?? f.Name;
-                    var normalized = NormalizeParam(logical);
+                    var normalized = NormalizeParam(logical, key.Item2);
                     if (normalized.Length > 0)
                         list.Add(new MemberBinding(normalized, false, f));
                 }
                 return [.. list];
             });
 
-            static string NormalizeParam(string logicalName)
+            static string NormalizeParam(string logicalName, NamingStrategy strategy)
             {
                 if (string.IsNullOrWhiteSpace(logicalName)) return string.Empty;
                 var trimmed = logicalName.Trim();
-                var upper = NativeUtil.ToUpperInvariant(trimmed);
+                
+                var result = strategy switch
+                {
+                    NamingStrategy.Lowercase => ToLowercase(trimmed),
+                    NamingStrategy.SnakeCase => ToSnakeCase(trimmed),
+                    NamingStrategy.CamelCase => ToCamelCase(trimmed),
+                    NamingStrategy.PascalCase => trimmed,
+                    NamingStrategy.Exact => trimmed,
+                    _ => ToSnakeCase(trimmed) // Default to snake_case
+                };
+                
+                return result;
+            }
+
+            static string ToLowercase(string input)
+            {
+                var upper = NativeUtil.ToUpperInvariant(input);
                 if (upper.Length == 0) return string.Empty;
                 char[] lowerBuf = new char[upper.Length];
                 for (int i = 0; i < upper.Length; i++)
@@ -90,53 +111,64 @@ namespace KuzuDot
                 return new string(lowerBuf);
             }
 
-            void BindOne(string param, object? value)
+            static string ToSnakeCase(string input)
             {
-                if (param.Length == 0) return;
-                if (value == null)
+                if (string.IsNullOrEmpty(input)) return string.Empty;
+                
+                var result = new System.Text.StringBuilder();
+                bool isFirst = true;
+                
+                foreach (char c in input)
                 {
-                    BindValue(param, KuzuValueFactory.CreateNull()); // creates a temporary wrapper; future optimization: reuse static NULL
-                    return;
+                    if (char.IsUpper(c))
+                    {
+                        if (!isFirst)
+                            result.Append('_');
+                        result.Append(char.ToLowerInvariant(c));
+                    }
+                    else
+                    {
+                        result.Append(c);
+                    }
+                    isFirst = false;
                 }
-                switch (value)
-                {
-                    case bool b: BindBool(param, b); return;
-                    case sbyte i8: BindInt8(param, i8); return;
-                    case short i16: BindInt16(param, i16); return;
-                    case int i32: BindInt32(param, i32); return;
-                    case long i64: BindInt64(param, i64); return;
-                    case byte u8: BindUInt8(param, u8); return;
-                    case ushort u16: BindUInt16(param, u16); return;
-                    case uint u32: BindUInt32(param, u32); return;
-                    case ulong u64: BindUInt64(param, u64); return;
-                    case float f: BindFloat(param, f); return;
-                    case double d: BindDouble(param, d); return;
-                    case decimal dec: BindString(param, dec.ToString(System.Globalization.CultureInfo.InvariantCulture)); return;
-                    case string s: BindString(param, s); return;
-                    case Guid guid: BindString(param, guid.ToString("D", System.Globalization.CultureInfo.InvariantCulture)); return;
-                    case UUID uuid: BindString(param, uuid.ToString()); return;
-                    //case DateOnly date: BindDate(param, date.ToDateTime(TimeOnly.MinValue)); return;
-                    case DateTime dt: BindTimestamp(param, dt); return;
-                    case DateTimeOffset dto: BindTimestampWithTimeZone(param, dto); return;
-                    case TimeSpan ts: BindInterval(param, ts); return;
-                    case KuzuValue kv: BindValue(param, kv); return;
-                }
-                var vt = value.GetType();
-                var underlying = System.Nullable.GetUnderlyingType(vt);
-                if (underlying != null)
-                {
-                    if (underlying == typeof(Guid)) { BindString(param, ((Guid)value).ToString("D", System.Globalization.CultureInfo.InvariantCulture)); return; }
-                    if (underlying == typeof(decimal)) { BindString(param, ((decimal)value).ToString(System.Globalization.CultureInfo.InvariantCulture)); return; }
-                }
-                BindString(param, value.ToString());
+                
+                return result.ToString();
             }
+
+            static string ToCamelCase(string input)
+            {
+                if (string.IsNullOrEmpty(input)) return string.Empty;
+                
+                var result = new System.Text.StringBuilder();
+                bool isFirst = true;
+                
+                foreach (char c in input)
+                {
+                    if (char.IsUpper(c))
+                    {
+                        if (isFirst)
+                            result.Append(char.ToLowerInvariant(c));
+                        else
+                            result.Append(c);
+                    }
+                    else
+                    {
+                        result.Append(c);
+                    }
+                    isFirst = false;
+                }
+                
+                return result.ToString();
+            }
+
 
             foreach (var b in bindings)
             {
                 object? val = b.IsProperty
                     ? ((System.Reflection.PropertyInfo)b.Member).GetValue(parameters)
                     : ((System.Reflection.FieldInfo)b.Member).GetValue(parameters);
-                BindOne(b.Parameter, val);
+                BindOne(b.Parameter, val ?? throw new InvalidOperationException($"Null value for parameter '{b.Parameter}'"));
             }
             return this;
         }
@@ -170,6 +202,77 @@ namespace KuzuDot
         public PreparedStatement Bind(string p, TimeSpan v) => BindInterval(p, v);
 
         public PreparedStatement Bind(string p, KuzuValue v) => BindValue(p, v);
+
+        public PreparedStatement Bind(string p, object v)
+        {
+            ThrowIfDisposed();
+            KuzuGuard.NotNullOrEmpty(p, nameof(p));
+            KuzuGuard.NotNull(v, nameof(v));
+            
+            // Prevent binding complex objects to single parameters
+            var type = v.GetType();
+            if (!type.IsPrimitive && type != typeof(string) && type != typeof(DateTime) && 
+                type != typeof(TimeSpan) && type != typeof(Guid) && type != typeof(decimal) &&
+                System.Nullable.GetUnderlyingType(type) == null)
+            {
+                throw new ArgumentException($"Cannot bind complex object of type '{type.Name}' to parameter '{p}'. " +
+                    "Use Bind(object) to bind all properties of an object, or bind individual primitive values.");
+            }
+            
+            return BindOne(p, v);
+        }
+
+        private PreparedStatement BindOne(string param, object value)
+        {
+            if (param.Length == 0) return this;
+            if (value == null)
+            {
+                BindValue(param, KuzuValueFactory.CreateNull()); // creates a temporary wrapper; future optimization: reuse static NULL
+                return this;
+            }
+            switch (value)
+            {
+                case bool b: BindBool(param, b); return this;
+                case sbyte i8: BindInt8(param, i8); return this;
+                case short i16: BindInt16(param, i16); return this;
+                case int i32: BindInt32(param, i32); return this;
+                case long i64: BindInt64(param, i64); return this;
+                case byte u8: BindUInt8(param, u8); return this;
+                case ushort u16: BindUInt16(param, u16); return this;
+                case uint u32: BindUInt32(param, u32); return this;
+                case ulong u64: BindUInt64(param, u64); return this;
+                case float f: BindFloat(param, f); return this;
+                case double d: BindDouble(param, d); return this;
+                case decimal dec: BindString(param, dec.ToString(System.Globalization.CultureInfo.InvariantCulture)); return this;
+                case string s: BindString(param, s); return this;
+                case Guid guid: BindString(param, guid.ToString("D", System.Globalization.CultureInfo.InvariantCulture)); return this;
+                case UUID uuid: BindString(param, uuid.ToString()); return this;
+                //case DateOnly date: BindDate(param, date.ToDateTime(TimeOnly.MinValue)); return this;
+                case DateTime dt: 
+                    // Check if parameter name suggests it's a date (not timestamp)
+#pragma warning disable CA2249 // Use 'string.Contains' instead of 'string.IndexOf' to improve readability
+                    if (param.IndexOf("date", StringComparison.OrdinalIgnoreCase) >= 0 && 
+                        param.IndexOf("timestamp", StringComparison.OrdinalIgnoreCase) < 0 && 
+                        param.IndexOf("time", StringComparison.OrdinalIgnoreCase) < 0)
+#pragma warning restore CA2249
+                        BindDate(param, dt);
+                    else
+                        BindTimestamp(param, dt);
+                    return this;
+                case DateTimeOffset dto: BindTimestampWithTimeZone(param, dto); return this;
+                case TimeSpan ts: BindInterval(param, ts); return this;
+                case KuzuValue kv: BindValue(param, kv); return this;
+            }
+            var vt = value.GetType();
+            var underlying = System.Nullable.GetUnderlyingType(vt);
+            if (underlying != null)
+            {
+                if (underlying == typeof(Guid)) { BindString(param, ((Guid)value).ToString("D", System.Globalization.CultureInfo.InvariantCulture)); return this; }
+                if (underlying == typeof(decimal)) { BindString(param, ((decimal)value).ToString(System.Globalization.CultureInfo.InvariantCulture)); return this; }
+            }
+            BindString(param, value.ToString());
+            return this;
+        }
 
         public PreparedStatement BindBool(string paramName, bool value)
         { Bind(paramName, value, NativeMethods.kuzu_prepared_statement_bind_bool); return this; }

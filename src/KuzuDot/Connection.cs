@@ -548,15 +548,54 @@ namespace KuzuDot
                     if (!p.CanWrite) continue;
                     var attr = (KuzuNameAttribute?)Attribute.GetCustomAttribute(p, typeof(KuzuNameAttribute));
                     var logical = attr?.Name ?? p.Name;
+                    
+                    // Add both the logical name and snake_case version for backward compatibility
                     if (!PropMap.ContainsKey(logical)) PropMap[logical] = p; // first win
+                    
+                    // Also add snake_case version if it's different
+                    var snakeCase = ToSnakeCase(logical);
+                    if (snakeCase != logical && !PropMap.ContainsKey(snakeCase))
+                        PropMap[snakeCase] = p;
                 }
                 var fields = type.GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
                 foreach (var f in fields)
                 {
                     var attr = (KuzuNameAttribute?)Attribute.GetCustomAttribute(f, typeof(KuzuNameAttribute));
                     var logical = attr?.Name ?? f.Name;
+                    
+                    // Add both the logical name and snake_case version for backward compatibility
                     if (!FieldMap.ContainsKey(logical)) FieldMap[logical] = f;
+                    
+                    // Also add snake_case version if it's different
+                    var snakeCase = ToSnakeCase(logical);
+                    if (snakeCase != logical && !FieldMap.ContainsKey(snakeCase))
+                        FieldMap[snakeCase] = f;
                 }
+            }
+            
+            private static string ToSnakeCase(string input)
+            {
+                if (string.IsNullOrEmpty(input)) return string.Empty;
+                
+                var result = new System.Text.StringBuilder();
+                bool isFirst = true;
+                
+                foreach (char c in input)
+                {
+                    if (char.IsUpper(c))
+                    {
+                        if (!isFirst)
+                            result.Append('_');
+                        result.Append(char.ToLowerInvariant(c));
+                    }
+                    else
+                    {
+                        result.Append(c);
+                    }
+                    isFirst = false;
+                }
+                
+                return result.ToString();
             }
         }
     }
