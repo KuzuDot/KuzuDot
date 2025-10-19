@@ -34,6 +34,11 @@
       <Pack>true</Pack>
       <PackagePath>runtimes/win-x64/native</PackagePath>
     </Content>
+    <!-- Also copy to main output directory for easier loading -->
+    <Content Include="..\..\native\win-x64\kuzu_shared.dll">
+      <Link>kuzu_shared.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

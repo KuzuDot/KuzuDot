@@ -90,7 +90,7 @@ namespace KuzuDot.Tests.ArrowTests
         private static long[] ReadInt64Values(KuzuDot.ArrowArray primitive)
         {
             long len = primitive.length;
-            if (len <= 0) return System.Array.Empty<long>();
+            if (len <= 0) return [];
             if (primitive.buffers == IntPtr.Zero)
                 throw new InvalidOperationException("Buffers pointer null");
 

@@ -81,11 +81,11 @@ public sealed class ConcurrencyStressTests
             while (sw.Elapsed < TimeSpan.FromSeconds(2))
             {
                 try { interruptConn.Interrupt(); } catch (KuzuException ex) { errors.Enqueue(ex); }
-                await Task.Delay(10).ConfigureAwait(false);
+                await Task.Delay(10, TestContext.CancellationToken).ConfigureAwait(false);
             }
-        });
+        }, TestContext.CancellationToken);
 
-        Task[] queryTasks = Enumerable.Range(0, workers).Select(i => Task.Run(() =>
+        Task[] queryTasks = [.. Enumerable.Range(0, workers).Select(i => Task.Run(() =>
         {
             using var c = db.Connect();
             var end = DateTime.UtcNow + TimeSpan.FromSeconds(2);
@@ -105,10 +105,10 @@ public sealed class ConcurrencyStressTests
                 catch (ObjectDisposedException) { }
                 catch (InvalidOperationException ex) { errors.Enqueue(ex); }
             }
-        })).ToArray();
+        }, TestContext.CancellationToken))];
 
-        Task.WaitAll(queryTasks);
-        interruptTask.Wait();
+        Task.WaitAll(queryTasks, TestContext.CancellationToken);
+        interruptTask.Wait(TestContext.CancellationToken);
 
         if (!errors.IsEmpty)
         {
@@ -122,10 +122,8 @@ public sealed class ConcurrencyStressTests
     {
         using var db = Database.FromMemory();
         using var setup = db.Connect();
-#pragma warning disable CA1849 // Call async methods when in an async method
         setup.NonQuery("CREATE NODE TABLE T(id INT64, PRIMARY KEY(id));");
         for (int i = 0; i < 128; i++) setup.NonQuery($"CREATE (:T {{id: {i}}});");
-#pragma warning restore CA1849 // Call async methods when in an async method
         int workers = GetWorkerCount(4);
         using var cts = new CancellationTokenSource();
         var tasks = Enumerable.Range(0, workers).Select(i => Task.Run(async () =>
@@ -136,7 +134,7 @@ public sealed class ConcurrencyStressTests
             {
                 try
                 {
-                    using var result = await local.QueryAsync("MATCH (x:T) RETURN x.id;").ConfigureAwait(false);
+                    using var result = await local.QueryAsync("MATCH (x:T) RETURN x.id;", TestContext.CancellationToken).ConfigureAwait(false);
                     int consumed = 0;
                     while (result.HasNext() && consumed < 3)
                     {
@@ -152,7 +150,7 @@ public sealed class ConcurrencyStressTests
             }
         }, cts.Token)).ToArray();
 
-        await Task.Delay(250).ConfigureAwait(false);
+        await Task.Delay(250, TestContext.CancellationToken).ConfigureAwait(false);
         cts.Cancel();
         try { await Task.WhenAll(tasks).ConfigureAwait(false); } catch (OperationCanceledException) { }
     }
@@ -215,4 +213,6 @@ public sealed class ConcurrencyStressTests
             }
         }
     }
+
+    public TestContext TestContext { get; set; }
 }
