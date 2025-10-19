@@ -9,10 +9,10 @@ using System.Text;
 namespace KuzuDot.Value
 {
     /// <summary>
-    /// KuzuValues that can be cast to a specific native type T.
-    /// They materialize values on create since they're immutable and relatively small.
+    /// Represents a Kuzu value that can be cast to a specific native type <typeparamref name="T"/>.
+    /// Materializes values on creation since they're immutable and relatively small.
     /// </summary>
-    /// <typeparam name="T"></typeparam>
+    /// <typeparam name="T">The native type this value represents.</typeparam>
     public abstract class KuzuTypedValue<T> : KuzuValue
     {
         internal KuzuTypedValue(IntPtr ptr) : base(ptr)
@@ -25,6 +25,9 @@ namespace KuzuDot.Value
 
         protected abstract bool TryGetNativeValue(out T value);
 
+        /// <summary>
+        /// Gets the value as the native type <typeparamref name="T"/>.
+        /// </summary>
         public T Value
         {
             get

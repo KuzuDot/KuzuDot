@@ -6,10 +6,17 @@ using System.Linq;
 
 namespace KuzuDot.Value
 {
+    /// <summary>
+    /// Represents a read-only dictionary of properties for a Kuzu node or relationship.
+    /// </summary>
     public class PropertyDictionary : IReadOnlyDictionary<string, KuzuValue>
     {
         private readonly IHasProperties _source;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PropertyDictionary"/> class.
+        /// </summary>
+        /// <param name="source">The source object that provides property access.</param>
         public PropertyDictionary(IHasProperties source)
         {
             _source = source ?? throw new ArgumentNullException(nameof(source));
@@ -26,7 +33,9 @@ namespace KuzuDot.Value
             return _source.GetPropertyValueAt(idx.Value);
         }
 
+        /// <inheritdoc/>
         public KuzuValue this[string key] => Get(key);
+        /// <inheritdoc/>
         public IEnumerable<string> Keys
         {
             get
@@ -37,6 +46,7 @@ namespace KuzuDot.Value
             }
         }
 
+        /// <inheritdoc/>
         public IEnumerable<KuzuValue> Values 
         {
             get
@@ -47,10 +57,19 @@ namespace KuzuDot.Value
             }
         }
 
+        /// <inheritdoc/>
         public int Count => (int)_source.PropertyCount;
 
+        /// <inheritdoc/>
         public bool ContainsKey(string key) => TryGetPropertyIndex(key) != null;
 
+        /// <summary>
+        /// Gets the property value for the given key and converts it to the specified type.
+        /// </summary>
+        /// <typeparam name="T">The expected type of the property value.</typeparam>
+        /// <param name="key">The property key.</param>
+        /// <returns>The property value converted to <typeparamref name="T"/>.</returns>
+        /// <exception cref="InvalidCastException">Thrown if the property cannot be cast to the specified type.</exception>
         public T Get<T>(string key)
         {
             using var val = Get(key);

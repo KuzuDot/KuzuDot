@@ -13,50 +13,154 @@ namespace KuzuDot.Value
     /// </summary>
     public static class KuzuValueFactory
     {
+        /// <summary>
+        /// Creates a null value.
+        /// </summary>
+        /// <returns>A <see cref="KuzuAny"/> representing a null value.</returns>
         public static KuzuAny CreateNull() => new (NativeMethods.kuzu_value_create_null());
 
+        /// <summary>
+        /// Creates a boolean value.
+        /// </summary>
+        /// <param name="value">The boolean value.</param>
+        /// <returns>A <see cref="KuzuBool"/> representing the boolean value.</returns>
         public static KuzuBool CreateBool(bool value) => new (NativeMethods.kuzu_value_create_bool(value));
 
+        /// <summary>
+        /// Creates an 8-bit signed integer value.
+        /// </summary>
+        /// <param name="value">The 8-bit signed integer value.</param>
+        /// <returns>A <see cref="KuzuInt8"/> representing the value.</returns>
         public static KuzuInt8 CreateInt8(sbyte value) => new (NativeMethods.kuzu_value_create_int8(value));
 
+        /// <summary>
+        /// Creates a 16-bit signed integer value.
+        /// </summary>
+        /// <param name="value">The 16-bit signed integer value.</param>
+        /// <returns>A <see cref="KuzuInt16"/> representing the value.</returns>
         public static KuzuInt16 CreateInt16(short value) => new (NativeMethods.kuzu_value_create_int16(value));
 
+        /// <summary>
+        /// Creates a 32-bit signed integer value.
+        /// </summary>
+        /// <param name="value">The 32-bit signed integer value.</param>
+        /// <returns>A <see cref="KuzuInt32"/> representing the value.</returns>
         public static KuzuInt32 CreateInt32(int value) => new (NativeMethods.kuzu_value_create_int32(value));
 
+        /// <summary>
+        /// Creates a 64-bit signed integer value.
+        /// </summary>
+        /// <param name="value">The 64-bit signed integer value.</param>
+        /// <returns>A <see cref="KuzuInt64"/> representing the value.</returns>
         public static KuzuInt64 CreateInt64(long value) => new(NativeMethods.kuzu_value_create_int64(value));
 
+        /// <summary>
+        /// Creates an 8-bit unsigned integer value.
+        /// </summary>
+        /// <param name="value">The 8-bit unsigned integer value.</param>
+        /// <returns>A <see cref="KuzuUInt8"/> representing the value.</returns>
         public static KuzuUInt8 CreateUInt8(byte value) => new(NativeMethods.kuzu_value_create_uint8(value));
 
+        /// <summary>
+        /// Creates a 16-bit unsigned integer value.
+        /// </summary>
+        /// <param name="value">The 16-bit unsigned integer value.</param>
+        /// <returns>A <see cref="KuzuUInt16"/> representing the value.</returns>
         public static KuzuUInt16 CreateUInt16(ushort value) => new(NativeMethods.kuzu_value_create_uint16(value));
 
+        /// <summary>
+        /// Creates a 32-bit unsigned integer value.
+        /// </summary>
+        /// <param name="value">The 32-bit unsigned integer value.</param>
+        /// <returns>A <see cref="KuzuUInt32"/> representing the value.</returns>
         public static KuzuUInt32 CreateUInt32(uint value) => new(NativeMethods.kuzu_value_create_uint32(value));
 
+        /// <summary>
+        /// Creates a 64-bit unsigned integer value.
+        /// </summary>
+        /// <param name="value">The 64-bit unsigned integer value.</param>
+        /// <returns>A <see cref="KuzuUInt64"/> representing the value.</returns>
         public static KuzuUInt64 CreateUInt64(ulong value) => new(NativeMethods.kuzu_value_create_uint64(value));
 
         internal static KuzuInt128 CreateInt128Internal(NativeKuzuInt128 value) => new(NativeMethods.kuzu_value_create_int128(value));
 
+        /// <summary>
+        /// Creates a single-precision floating-point value.
+        /// </summary>
+        /// <param name="value">The float value.</param>
+        /// <returns>A <see cref="KuzuFloat"/> representing the value.</returns>
         public static KuzuFloat CreateFloat(float value) => new(NativeMethods.kuzu_value_create_float(value));
 
+        /// <summary>
+        /// Creates a double-precision floating-point value.
+        /// </summary>
+        /// <param name="value">The double value.</param>
+        /// <returns>A <see cref="KuzuDouble"/> representing the value.</returns>
         public static KuzuDouble CreateDouble(double value) => new(NativeMethods.kuzu_value_create_double(value));
 
+        /// <summary>
+        /// Creates an internal ID value.
+        /// </summary>
+        /// <param name="value">The internal ID value.</param>
+        /// <returns>A <see cref="KuzuInternalId"/> representing the value.</returns>
         public static KuzuInternalId CreateInternalId(InternalId value) => new (NativeMethods.kuzu_value_create_internal_id(value.ToNative()));
 
         internal static KuzuDate CreateDateInternal(NativeKuzuDate value) => new (NativeMethods.kuzu_value_create_date(value));
 
+        /// <summary>
+        /// Creates a date value from a <see cref="DateTime"/>.
+        /// </summary>
+        /// <param name="dateTime">The date and time value.</param>
+        /// <returns>A <see cref="KuzuDate"/> representing the date.</returns>
         public static KuzuDate CreateDate(DateTime dateTime) => CreateDateInternal(DateTimeUtilities.DateTimeToKuzuDate(dateTime));
 
+        /// <summary>
+        /// Creates a timestamp value from a <see cref="DateTime"/>.
+        /// </summary>
+        /// <param name="dateTime">The date and time value.</param>
+        /// <returns>A <see cref="KuzuTimestamp"/> representing the timestamp.</returns>
         public static KuzuTimestamp CreateTimestamp(DateTime dateTime) => new (NativeMethods.kuzu_value_create_timestamp(DateTimeUtilities.DateTimeToNativeTimestamp(dateTime)));
 
+        /// <summary>
+        /// Creates a timestamp value from Unix microseconds.
+        /// </summary>
+        /// <param name="micros">The number of microseconds since Unix epoch.</param>
+        /// <returns>A <see cref="KuzuTimestamp"/> representing the timestamp.</returns>
         public static KuzuTimestamp CreateTimestampFromUnixMicros(long micros) => new (NativeMethods.kuzu_value_create_timestamp(new NativeKuzuTimestamp(micros)));
 
+        /// <summary>
+        /// Creates a timestamp value from nanoseconds.
+        /// </summary>
+        /// <param name="nanos">The number of nanoseconds since Unix epoch.</param>
+        /// <returns>A <see cref="KuzuTimestampNs"/> representing the timestamp.</returns>
         public static KuzuTimestampNs CreateTimestampNanoseconds(long nanos) => new (NativeMethods.kuzu_value_create_timestamp_ns(new NativeKuzuTimestampNs(nanos)));
 
+        /// <summary>
+        /// Creates a timestamp value from milliseconds.
+        /// </summary>
+        /// <param name="millis">The number of milliseconds since Unix epoch.</param>
+        /// <returns>A <see cref="KuzuTimestampMs"/> representing the timestamp.</returns>
         public static KuzuTimestampMs CreateTimestampMilliseconds(long millis) => new (NativeMethods.kuzu_value_create_timestamp_ms(new NativeKuzuTimestampMs(millis)));
 
+        /// <summary>
+        /// Creates a timestamp value from seconds.
+        /// </summary>
+        /// <param name="seconds">The number of seconds since Unix epoch.</param>
+        /// <returns>A <see cref="KuzuTimestampSec"/> representing the timestamp.</returns>
         public static KuzuTimestampSec CreateTimestampSeconds(long seconds) => new (NativeMethods.kuzu_value_create_timestamp_sec(new NativeKuzuTimestampSec(seconds)));
 
+        /// <summary>
+        /// Creates a timestamp with time zone value from microseconds.
+        /// </summary>
+        /// <param name="microsUtc">The number of microseconds since Unix epoch (UTC).</param>
+        /// <returns>A <see cref="KuzuTimestampTz"/> representing the timestamp with time zone.</returns>
         public static KuzuTimestampTz CreateTimestampWithTimeZoneMicros(long microsUtc) => new (NativeMethods.kuzu_value_create_timestamp_tz(new NativeKuzuTimestampTz(microsUtc)));
 
+        /// <summary>
+        /// Creates an interval value from a <see cref="TimeSpan"/>.
+        /// </summary>
+        /// <param name="span">The time span value.</param>
+        /// <returns>A <see cref="KuzuInterval"/> representing the interval.</returns>
         public static KuzuInterval CreateInterval(TimeSpan span) => new (NativeMethods.kuzu_value_create_interval(DateTimeUtilities.TimeSpanToNativeInterval(span)));
 
         public static KuzuString CreateString(string? value)

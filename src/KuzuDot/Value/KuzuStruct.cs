@@ -6,6 +6,9 @@ using System.Collections.Generic;
 
 namespace KuzuDot.Value
 {
+    /// <summary>
+    /// Represents a struct value in KuzuDB, providing access to named fields.
+    /// </summary>
     public class KuzuStruct : KuzuValue, IEnumerable<(string Name, KuzuValue Value)>
     {
         private ulong? _fieldCount;
@@ -18,6 +21,9 @@ namespace KuzuDot.Value
         {
         }
 
+        /// <summary>
+        /// Gets the number of fields in the struct.
+        /// </summary>
         public ulong FieldCount
         {
             get

@@ -5,6 +5,9 @@ using System.Runtime.InteropServices;
 
 namespace KuzuDot.Value
 {
+    /// <summary>
+    /// Represents a node value in KuzuDB, including ID, label, and properties.
+    /// </summary>
     public class KuzuNode : KuzuValue, IHasProperties
     {
         private InternalId? _id;
@@ -12,6 +15,9 @@ namespace KuzuDot.Value
 
         private ulong? _propertyCount;
 
+        /// <summary>
+        /// Gets the internal ID of the node.
+        /// </summary>
         public InternalId Id
         {
             get
@@ -24,6 +30,9 @@ namespace KuzuDot.Value
             }
         }
 
+        /// <summary>
+        /// Gets the label of the node.
+        /// </summary>
         public string Label
         {
             get
@@ -33,8 +42,14 @@ namespace KuzuDot.Value
             }
         }
 
+        /// <summary>
+        /// Gets the properties of the node as a <see cref="PropertyDictionary"/>.
+        /// </summary>
         public PropertyDictionary Properties => new(this);
 
+        /// <summary>
+        /// Gets the number of properties on the node.
+        /// </summary>
         public ulong PropertyCount
         {
             get

@@ -47,6 +47,14 @@ namespace KuzuDot.Value
             _handle.Init(nativeStruct);
         }
 
+        /// <summary>
+        /// Creates a deep copy of this value.
+        /// </summary>
+        /// <returns>A new <see cref="KuzuValue"/> that is a copy of this instance.</returns>
+        /// <summary>
+        /// Creates a deep copy of this value.
+        /// </summary>
+        /// <returns>A new <see cref="KuzuValue"/> that is a copy of this instance.</returns>
         public KuzuValue Clone()
         {
             lock (_lockObject)
@@ -58,6 +66,11 @@ namespace KuzuDot.Value
             }
         }
 
+        /// <summary>
+        /// Copies the value from another <see cref="KuzuValue"/> of the same type into this instance.
+        /// </summary>
+        /// <param name="other">The value to copy from.</param>
+        /// <exception cref="ArgumentException">Thrown if the types do not match.</exception>
         public void CopyFrom(KuzuValue other)
         {
             KuzuGuard.NotNull(other, nameof(other));
@@ -71,18 +84,29 @@ namespace KuzuDot.Value
             }
         }
 
+        /// <summary>
+        /// Releases all resources used by the <see cref="KuzuValue"/>.
+        /// </summary>
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// Determines whether this value is null.
+        /// </summary>
+        /// <returns>True if the value is null; otherwise, false.</returns>
         public bool IsNull()
         {
             ThrowIfDisposed();
             return NativeMethods.kuzu_value_is_null(ref Handle.NativeStruct);
         }
 
+        /// <summary>
+        /// Sets the null state of this value.
+        /// </summary>
+        /// <param name="isNull">True to set the value as null; false otherwise.</param>
         public void SetNull(bool isNull)
         {
             lock (_lockObject)
@@ -92,6 +116,7 @@ namespace KuzuDot.Value
             }
         }
 
+        /// <inheritdoc/>
         public override string ToString()
         {
             if (_handle.IsInvalid) return "[Invalid KuzuValue]";
@@ -100,6 +125,12 @@ namespace KuzuDot.Value
             return NativeUtil.PtrToStringAndDestroy(ptr, NativeMethods.kuzu_destroy_string);
         }
 
+        /// <summary>
+        /// Converts a <see cref="KuzuValue"/> to a .NET type, handling nullable and primitive types.
+        /// </summary>
+        /// <param name="target">The target .NET type to convert to.</param>
+        /// <param name="value">The <see cref="KuzuValue"/> to convert.</param>
+        /// <returns>The converted value as the specified .NET type.</returns>
         internal static object ConvertKuzuValue(Type target, KuzuValue value)
         {
             // Handle nullable types first
@@ -148,11 +179,21 @@ namespace KuzuDot.Value
         //    return WrapNativeStruct(raw); // new(wrapperPtr, false));
         //}
 
+        /// <summary>
+        /// Creates a <see cref="KuzuValue"/> from a native pointer, taking ownership.
+        /// </summary>
+        /// <param name="raw">The native pointer to the value.</param>
+        /// <returns>A managed <see cref="KuzuValue"/> instance.</returns>
         internal static KuzuValue FromNativePtr(IntPtr raw)
         {
             return WrapOwned(raw);
         }
 
+        /// <summary>
+        /// Creates a <see cref="KuzuValue"/> from a native struct.
+        /// </summary>
+        /// <param name="raw">The native struct representing the value.</param>
+        /// <returns>A managed <see cref="KuzuValue"/> instance.</returns>
         internal static KuzuValue FromNativeStruct(NativeKuzuValue raw)
         {
             return WrapNativeStruct(raw);
@@ -193,6 +234,9 @@ namespace KuzuDot.Value
         ////    };
         ////}
 
+        /// <summary>
+        /// Throws an exception if this value has been disposed.
+        /// </summary>
         protected void ThrowIfDisposed()
         {
             KuzuGuard.NotDisposed(_handle.IsInvalid, GetType().Name);

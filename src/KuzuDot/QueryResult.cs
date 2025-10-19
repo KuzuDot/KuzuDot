@@ -25,6 +25,9 @@ namespace KuzuDot
         // uppercase for case-insensitive match
         private bool _columnNameCacheBuilt;
 
+        /// <summary>
+        /// Gets the number of columns in the result set.
+        /// </summary>
         public ulong ColumnCount
         {
             get
@@ -34,6 +37,9 @@ namespace KuzuDot
         }
 
         // Method form kept (examples reference GetErrorMessage).
+        /// <summary>
+        /// Gets the error message if the query failed.
+        /// </summary>
         public string? ErrorMessage
         {
             get
@@ -44,6 +50,9 @@ namespace KuzuDot
             }
         }
 
+        /// <summary>
+        /// Gets a value indicating whether the query was successful.
+        /// </summary>
         public bool IsSuccess
         {
             get
@@ -52,6 +61,9 @@ namespace KuzuDot
             }
         }
 
+        /// <summary>
+        /// Gets the number of rows in the result set.
+        /// </summary>
         public ulong RowCount
         {
             get
@@ -67,6 +79,9 @@ namespace KuzuDot
             _handle = new QueryResultSafeHandle(native.QueryResult, native.IsOwnedByCpp);
         }
 
+        /// <summary>
+        /// Releases all resources used by the <see cref="QueryResult"/>.
+        /// </summary>
         public void Dispose()
         {
             Dispose(true);
@@ -82,6 +97,11 @@ namespace KuzuDot
         }
 #endif
 
+        /// <summary>
+        /// Gets the name of the column at the specified index.
+        /// </summary>
+        /// <param name="index">The column index.</param>
+        /// <returns>The column name.</returns>
         public string GetColumnName(ulong index)
         {
             var state = NativeMethods.kuzu_query_result_get_column_name(ref _handle.NativeStruct, index, out var namePtr);
@@ -89,6 +109,11 @@ namespace KuzuDot
             return NativeUtil.PtrToStringAndDestroy(namePtr, NativeMethods.kuzu_destroy_string);
         }
 
+        /// <summary>
+        /// Gets the next row in the result set as a <see cref="FlatTuple"/>.
+        /// </summary>
+        /// <returns>The next <see cref="FlatTuple"/>.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if there are no more rows.</exception>
         public FlatTuple GetNext()
         {
             ThrowIfDisposed();
@@ -118,6 +143,10 @@ namespace KuzuDot
             return new QuerySummary(summaryHandle);
         }
 
+        /// <summary>
+        /// Determines whether there are more rows available in the result set.
+        /// </summary>
+        /// <returns>True if there are more rows; otherwise, false.</returns>
         public bool HasNext()
         {
             ThrowIfDisposed();
@@ -137,6 +166,7 @@ namespace KuzuDot
             NativeMethods.kuzu_query_result_reset_iterator(ref _handle.NativeStruct);
         }
 
+        /// <inheritdoc/>
         public override string ToString()
         {
             if (_handle.IsInvalid) return "QueryResult(Disposed)";

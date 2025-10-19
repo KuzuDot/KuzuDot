@@ -10,6 +10,9 @@ using System.Threading.Tasks;
 
 namespace KuzuDot
 {
+    /// <summary>
+    /// Represents a connection to a Kuzu database, used to execute queries and manage transactions.
+    /// </summary>
     public sealed class Connection : IDisposable
     {
         private readonly ConnectionSafeHandle _handle;
@@ -43,7 +46,7 @@ namespace KuzuDot
         }
 
         /// <summary>
-        /// Releases all resources used by the Connection.
+        /// Releases all resources used by the <see cref="Connection"/>.
         /// </summary>
         public void Dispose()
         {
@@ -51,8 +54,11 @@ namespace KuzuDot
         }
 
         /// <summary>
-        /// Async wrapper for executing a prepared statement.
+        /// Executes a prepared statement asynchronously.
         /// </summary>
+        /// <param name="preparedStatement">The prepared statement to execute.</param>
+        /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
+        /// <returns>A task representing the asynchronous operation, with a <see cref="QueryResult"/> as result.</returns>
         public Task<QueryResult> ExecuteAsync(PreparedStatement preparedStatement, System.Threading.CancellationToken cancellationToken = default)
             => Task.Run(() =>
             {
@@ -77,12 +83,14 @@ namespace KuzuDot
         /// </summary>
         /// <param name="query">The query to execute.</param>
         /// <returns>True if native layer reported success.</returns>
-        /// <exception cref="KuzuException">Thrown if the query fails inside KuzuDB</exception>
+        /// <exception cref="KuzuException">Thrown if the query fails inside KuzuDB.</exception>
         public bool ExecuteNonQuery(string query) => NonQuery(query);
 
         /// <summary>
-        /// Executes a previously prepared (and optionally bound) statement returning a QueryResult.
+        /// Executes a previously prepared (and optionally bound) statement returning a <see cref="QueryResult"/>.
         /// </summary>
+        /// <param name="statement">The prepared statement to execute.</param>
+        /// <returns>The query result.</returns>
         public QueryResult ExecutePrepared(PreparedStatement statement)
         {
             KuzuGuard.NotNull(statement, nameof(statement));

@@ -8,10 +8,16 @@ using System.Runtime.InteropServices;
 
 namespace KuzuDot.Value
 {
+    /// <summary>
+    /// Represents a list value in KuzuDB, providing access to elements and conversion utilities.
+    /// </summary>
     public class KuzuList : KuzuValue, IEnumerable<KuzuValue>
     {
         private ulong? _count;
 
+        /// <summary>
+        /// Gets the number of elements in the list.
+        /// </summary>
         public virtual ulong Count
         {
             get
@@ -38,6 +44,11 @@ namespace KuzuDot.Value
         {
         }
 
+        /// <summary>
+        /// Gets the element at the specified index.
+        /// </summary>
+        /// <param name="index">The zero-based index of the element.</param>
+        /// <returns>The <see cref="KuzuValue"/> at the specified index.</returns>
         public KuzuValue this[ulong index] => GetElement(index);
 
         public IEnumerable<T> As<T>()

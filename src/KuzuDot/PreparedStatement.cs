@@ -7,6 +7,9 @@ using System.Runtime.InteropServices;
 
 namespace KuzuDot
 {
+    /// <summary>
+    /// Represents a prepared statement for execution against a Kuzu database.
+    /// </summary>
     public sealed partial class PreparedStatement : IDisposable
     {
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<(Type, NamingStrategy), MemberBinding[]> _typeCache = new();
@@ -15,6 +18,9 @@ namespace KuzuDot
 
         private readonly PreparedStatementSafeHandle _handle;
 
+        /// <summary>
+        /// Gets the error message if the prepared statement failed.
+        /// </summary>
         public string ErrorMessage
         {
             get
@@ -24,6 +30,9 @@ namespace KuzuDot
             }
         }
 
+        /// <summary>
+        /// Gets a value indicating whether the prepared statement was created successfully.
+        /// </summary>
         public bool IsSuccess
         {
             get
@@ -44,11 +53,22 @@ namespace KuzuDot
 
         private delegate KuzuState NativeBind<T>(ref NativeKuzuPreparedStatement handle, string paramName, T value);
 
+        /// <summary>
+        /// Binds parameters to the prepared statement using the default naming strategy (snake_case).
+        /// </summary>
+        /// <param name="parameters">The parameters object.</param>
+        /// <returns>The current <see cref="PreparedStatement"/> instance.</returns>
         public PreparedStatement Bind(object parameters)
         {
             return Bind(parameters, NamingStrategy.SnakeCase);
         }
 
+        /// <summary>
+        /// Binds parameters to the prepared statement using the specified naming strategy.
+        /// </summary>
+        /// <param name="parameters">The parameters object.</param>
+        /// <param name="strategy">The naming strategy to use for parameter names.</param>
+        /// <returns>The current <see cref="PreparedStatement"/> instance.</returns>
         public PreparedStatement Bind(object parameters, NamingStrategy strategy)
         {
             ThrowIfDisposed();
@@ -358,12 +378,17 @@ namespace KuzuDot
             _handle.Dispose();
         }
 
+        /// <summary>
+        /// Executes the prepared statement and returns the query result.
+        /// </summary>
+        /// <returns>The <see cref="QueryResult"/> produced by executing this statement.</returns>
         public QueryResult Execute()
         {
             ThrowIfDisposed();
             return _connection.Execute(this);
         }
 
+        /// <inheritdoc/>
         public override string ToString()
         {
             if (_handle.IsInvalid) return "PreparedStatement(Disposed)";

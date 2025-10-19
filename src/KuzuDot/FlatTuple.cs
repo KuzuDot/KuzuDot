@@ -14,7 +14,9 @@ namespace KuzuDot
 
         private readonly QueryResult? _owner;
 
-        /// <summary>Number of values in this tuple.</summary>
+        /// <summary>
+        /// Gets the number of values in this tuple.
+        /// </summary>
         public ulong Size { get; internal set; }
 
         internal FlatTuple(NativeKuzuFlatTuple native, QueryResult? owner = null)
@@ -23,6 +25,9 @@ namespace KuzuDot
             _owner = owner;
         }
 
+        /// <summary>
+        /// Releases all resources used by the <see cref="FlatTuple"/>.
+        /// </summary>
         public void Dispose()
         {
             _handle.Dispose();

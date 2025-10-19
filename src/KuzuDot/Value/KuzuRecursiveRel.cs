@@ -4,12 +4,20 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace KuzuDot.Value
 {
+    /// <summary>
+    /// Represents a recursive relationship value in KuzuDB, containing lists of nodes and relationships.
+    /// </summary>
     public sealed class KuzuRecursiveRel : KuzuValue
     {
         internal KuzuRecursiveRel(NativeKuzuValue n) : base(n)
         {
         }
 
+        /// <summary>
+        /// Gets the list of nodes in the recursive relationship.
+        /// </summary>
+        /// <returns>A <see cref="KuzuList"/> containing the nodes.</returns>
+        /// <exception cref="KuzuException">Thrown if the node list is empty.</exception>
         public KuzuList GetNodeList()
         {
             ThrowIfDisposed();
@@ -20,6 +28,11 @@ namespace KuzuDot.Value
             return lv;
         }
 
+        /// <summary>
+        /// Gets the list of relationships in the recursive relationship.
+        /// </summary>
+        /// <returns>A <see cref="KuzuList"/> containing the relationships.</returns>
+        /// <exception cref="KuzuException">Thrown if the relationship list is empty.</exception>
         public KuzuList GetRelList()
         {
             ThrowIfDisposed();

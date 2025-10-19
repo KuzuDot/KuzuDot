@@ -5,6 +5,9 @@ using System.Runtime.InteropServices;
 
 namespace KuzuDot.Value
 {
+    /// <summary>
+    /// Represents a relationship value in KuzuDB, including source/destination IDs, label, and properties.
+    /// </summary>
     public sealed class KuzuRel : KuzuValue, IHasProperties
     {
         private InternalId? _dstId;
@@ -17,6 +20,9 @@ namespace KuzuDot.Value
 
         private InternalId? _srcId;
 
+        /// <summary>
+        /// Gets the destination node ID of the relationship.
+        /// </summary>
         public InternalId DstId
         {
             get
@@ -28,6 +34,9 @@ namespace KuzuDot.Value
             }
         }
 
+        /// <summary>
+        /// Gets the internal ID of the relationship.
+        /// </summary>
         public InternalId Id
         {
             get
@@ -44,6 +53,9 @@ namespace KuzuDot.Value
             }
         }
 
+        /// <summary>
+        /// Gets the label of the relationship.
+        /// </summary>
         public string Label
         {
             get
@@ -53,8 +65,14 @@ namespace KuzuDot.Value
             }
         }
 
+        /// <summary>
+        /// Gets the properties of the relationship as a <see cref="PropertyDictionary"/>.
+        /// </summary>
         public PropertyDictionary Properties => new(this);
 
+        /// <summary>
+        /// Gets the number of properties on the relationship.
+        /// </summary>
         public ulong PropertyCount
         {
             get

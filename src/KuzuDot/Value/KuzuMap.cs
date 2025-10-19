@@ -7,9 +7,14 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace KuzuDot.Value
 {
-
+    /// <summary>
+    /// Represents a map value in KuzuDB, providing access to key-value pairs.
+    /// </summary>
     public class KuzuMap : KuzuValue, IEnumerable<KeyValuePair<KuzuValue, KuzuValue>>
     {
+        /// <summary>
+        /// Gets the number of key-value pairs in the map.
+        /// </summary>
         public ulong Count
         {
             get

@@ -25,18 +25,38 @@ namespace KuzuDot
         /// <exception cref="KuzuException">Thrown when database initialization fails.</exception>
         private Database(string path) : this(path, DatabaseConfig.Default()) { }
 
+        /// <summary>
+        /// Creates a new <see cref="Database"/> instance from the specified path using default configuration.
+        /// </summary>
+        /// <param name="path">The file system path where the database is located or will be created.</param>
+        /// <returns>A new <see cref="Database"/> instance.</returns>
         public static Database FromPath(string path) => new(path);
+        /// <summary>
+        /// Creates a new <see cref="Database"/> instance from the specified path and configuration.
+        /// </summary>
+        /// <param name="path">The file system path where the database is located or will be created.</param>
+        /// <param name="config">The database configuration.</param>
+        /// <returns>A new <see cref="Database"/> instance.</returns>
         public static Database FromPath(string path, DatabaseConfig config)
         {
             KuzuGuard.NotNull(config, nameof(config));
             return new(path, config);
         }
 
+        /// <summary>
+        /// Creates a new in-memory <see cref="Database"/> instance using default configuration.
+        /// </summary>
+        /// <returns>A new in-memory <see cref="Database"/> instance.</returns>
         public static Database FromMemory() => FromPath(":memory:");
+        /// <summary>
+        /// Creates a new in-memory <see cref="Database"/> instance with the specified configuration.
+        /// </summary>
+        /// <param name="config">The database configuration.</param>
+        /// <returns>A new in-memory <see cref="Database"/> instance.</returns>
         public static Database FromMemory(DatabaseConfig config) => FromPath(":memory:", config);
 
         /// <summary>
-        /// Initializes a new database instance at the specified path.
+        /// Initializes a new database instance at the specified path with the given configuration.
         /// </summary>
         /// <param name="path">The file system path where the database is located or will be created; ":memory:" or an empty string will create an in-memory database.</param>
         /// <param name="config">System configuration.</param>
@@ -68,7 +88,7 @@ namespace KuzuDot
         /// Creates a new connection to this database.
         /// Multiple connections can be created and used concurrently.
         /// </summary>
-        /// <returns>A new connection instance.</returns>
+        /// <returns>A new <see cref="Connection"/> instance.</returns>
         /// <exception cref="ObjectDisposedException">Thrown when the database has been disposed.</exception>
         /// <exception cref="KuzuException">Thrown when connection creation fails.</exception>
         public Connection Connect()
@@ -78,13 +98,14 @@ namespace KuzuDot
         }
 
         /// <summary>
-        /// Releases all resources used by the Database.
+        /// Releases all resources used by the <see cref="Database"/>.
         /// </summary>
         public void Dispose()
         {
             _handle.Dispose();
         }
 
+        /// <inheritdoc/>
         public override string ToString() => _handle.IsInvalid ? "Database(Disposed)" : $"Database(Path={_path ?? ""})";
 
         private sealed class DatabaseSafeHandle : KuzuSafeHandle
