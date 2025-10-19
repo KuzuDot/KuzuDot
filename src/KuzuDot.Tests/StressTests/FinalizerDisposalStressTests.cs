@@ -13,6 +13,7 @@ namespace KuzuDot.Tests.StressTests
     /// QueryResult disposal during finalization causes access violations, so it is excluded here.
     /// </summary>
     [TestClass]
+    [TestCategory("Stress")]
     public sealed class FinalizerDisposalStressTests
     {
         private const int Iterations = 500;
@@ -25,10 +26,10 @@ namespace KuzuDot.Tests.StressTests
             for (int i = 0; i < LargeIterations; i++)
             {
 #pragma warning disable CA2000 // Dispose objects before losing scope
-                var v1 = KuzuValueFactory.CreateInt64(i);
-                var v2 = KuzuValueFactory.CreateString($"str_{i}");
-                var v3 = KuzuValueFactory.CreateBool(i % 2 == 0);
-                var v4 = KuzuValueFactory.CreateNull();
+                _ = KuzuValueFactory.CreateInt64(i);
+                _ = KuzuValueFactory.CreateString($"str_{i}");
+                _ = KuzuValueFactory.CreateBool(i % 2 == 0);
+                _ = KuzuValueFactory.CreateNull();
 #pragma warning restore CA2000 // Dispose objects before losing scope
                 // Do not call Dispose
             }
@@ -68,8 +69,8 @@ namespace KuzuDot.Tests.StressTests
             GC.WaitForPendingFinalizers();
             using var result2 = conn.Query("MATCH (x:T) RETURN x.id;");
             using var summary2 = result2.GetQuerySummary();
-            Assert.IsTrue(summary2.CompilingTimeMs >= 0);
-            Assert.IsTrue(summary2.ExecutionTimeMs >= 0);
+            Assert.IsGreaterThanOrEqualTo(0, summary2.CompilingTimeMs);
+            Assert.IsGreaterThanOrEqualTo(0, summary2.ExecutionTimeMs);
         }
     }
 }
