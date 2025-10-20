@@ -6,7 +6,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace KuzuDot
 {
@@ -111,6 +113,90 @@ namespace KuzuDot
             using var row = result.GetNext();
             if (result.ColumnCount == 0) throw new InvalidOperationException("Scalar query returned zero columns");
             return row.GetValueAs<T>(0);
+        }
+
+        public IReadOnlyList<SchemaTable> GetNodeTables()
+        {
+            NotDisposed();
+            using var results = Query("CALL show_tables() WHERE type = 'NODE' RETURN *;");
+            return GetTablesFromResults(results);
+        }
+
+        /// <summary>
+        /// Get the Relationship tables in the database
+        /// </summary>
+        /// <returns>List of Relationship tables</returns>
+        public IReadOnlyList<SchemaTable> GetRelTables()
+        {
+            NotDisposed();
+            using var results = Query("CALL show_tables() WHERE type = 'REL' RETURN *;");
+            return GetTablesFromResults(results);
+        }
+
+        /// <summary>
+        /// Get schema info for a given table by ID
+        /// </summary>
+        /// <param name="id">Table ID</param>
+        /// <returns>Schema Info for the table</returns>
+        public SchemaTable GetTableById(ulong id)
+        {
+            NotDisposed();
+            using var results = Query($"CALL show_tables() WHERE id = {id} RETURN *;");
+            return GetTablesFromResults(results).Single();
+        }
+
+        /// <summary>
+        /// Retrieves the schema information for the table identified by the specified table ID.
+        /// </summary>
+        /// <param name="tableId">The unique identifier of the table for which to retrieve schema information.</param>
+        /// <returns>A read-only list of properties describing the schema of the specified table. The list will be empty if the
+        /// table has no properties.</returns>
+        public IReadOnlyList<SchemaProperty> GetTableInfo(ulong tableId)
+        {
+            NotDisposed();
+            var table = GetTableById(tableId);
+            return GetTableInfo(table.Name!);
+        }
+
+        /// <summary>
+        /// Retrieves column definitions and primary key status for a given table
+        /// </summary>
+        /// <param name="tableName">The name of the table. Cannot be null or empty.</param>
+        /// <returns>A read-only list of <see cref="SchemaProperty"/>.</returns>
+        /// <exception cref="KuzuException">Thrown if the schema information isn't found.</exception>
+        public IReadOnlyList<SchemaProperty> GetTableInfo(string tableName)
+        {
+            NotDisposed();
+            KuzuGuard.NotNullOrEmpty(tableName, nameof(tableName));
+
+            var columns = new List<SchemaProperty>();
+
+            using var results = Query($"CALL table_info('{tableName}') RETURN *;");
+            if (!results.IsSuccess) throw new KuzuException($"Failed to get table info for table '{tableName}': {results.ErrorMessage}");
+            while (results.HasNext())
+            {
+                using var row = results.GetNext();
+                columns.Add(new SchemaProperty
+                {
+                    Id = row.GetValueAs<int>(0),
+                    Name = row.GetValueAs<string>(1),
+                    Type = row.GetValueAs<string>(2),
+                    DefaultExpression = row.GetValueAs<string>(3),
+                    IsPrimaryKey = row.GetValueAs<bool>(4)
+                });
+            }
+            return columns;
+        }
+
+        /// <summary>
+        /// Retrieves list of all tables defined in the current database schema.
+        /// </summary>
+        /// <returns>List of <see cref="SchemaTable"/></returns>
+        public IReadOnlyList<SchemaTable> GetTables()
+        {
+            NotDisposed();
+            using var results = Query("CALL show_tables() RETURN *;");
+            return GetTablesFromResults(results);
         }
 
         /// <summary>
@@ -249,7 +335,6 @@ namespace KuzuDot
             foreach (var item in QueryEnumerable(query, projector)) list.Add(item);
             return list;
         }
-
         /// <summary>
         /// Executes a query and materializes each row into a new instance of T using public settable properties and fields.
         /// Property/field names are matched (case-insensitive) against column names.
@@ -262,7 +347,7 @@ namespace KuzuDot
             var list = new List<T>();
             if (!result.IsSuccess) return list; // empty on failure (would have thrown earlier normally)
 
-            int columnCount = (int)result.ColumnCount;
+            ulong columnCount = result.ColumnCount;
             var columnNames = new string[columnCount];
             for (uint i = 0; i < result.ColumnCount; i++)
             {
@@ -276,45 +361,44 @@ namespace KuzuDot
             {
                 using var row = result.GetNext();
                 var instance = new T();
-                for (int c = 0; c < columnCount; c++)
+                for (ulong c = 0; c < columnCount; c++)
                 {
-                    using var value = row.GetValue((ulong)c);
+                    using var value = row.GetValue(c);
                     if (value.DataTypeId == KuzuDataTypeId.KuzuNode)
                     {
-                        using KuzuNode aKuzuNode = (KuzuNode)KuzuValue.FromNativeStruct(value.Handle.NativeStruct);
-                        if(aKuzuNode.Label==typeof(T).Name) // use this to match Label to <T> typeName
-                        //if (true)
+                        using var aKuzuNode = (KuzuNode)KuzuValue.FromNativeStruct(value.Handle.NativeStruct);
+                        //if(aKuzuNode.Label==typeof(T).Name) // use this to match Label to <T> typeName
+                        //{
+                        foreach (var aProp in aKuzuNode.Properties)
                         {
-                            foreach (var aProp in aKuzuNode.Properties)
+                            if (propMap.TryGetValue(aProp.Key, out var propp))
                             {
-                                if (propMap.TryGetValue(aProp.Key, out var propp))
+                                try
                                 {
-                                    try
-                                    {
-                                        var converted = KuzuValue.ConvertKuzuValue(propp.PropertyType, aProp.Value);
-                                        propp.SetValue(instance, converted);
-                                    }
-                                    catch (System.InvalidCastException) { }
-                                    catch (System.FormatException) { }
-                                    continue;
+                                    var converted = KuzuValue.ConvertKuzuValue(propp.PropertyType, aProp.Value);
+                                    propp.SetValue(instance, converted);
                                 }
-                                if (fieldMap.TryGetValue(aProp.Key, out var fieldd))
+                                catch (System.InvalidCastException) { }
+                                catch (System.FormatException) { }
+                                continue;
+                            }
+                            if (fieldMap.TryGetValue(aProp.Key, out var fieldd))
+                            {
+                                try
                                 {
-                                    try
-                                    {
-                                        var converted = KuzuValue.ConvertKuzuValue(fieldd.FieldType, aProp.Value);
-                                        fieldd.SetValue(instance, converted);
-                                    }
-                                    catch (System.InvalidCastException) { }
-                                    catch (System.FormatException) { }
+                                    var converted = KuzuValue.ConvertKuzuValue(fieldd.FieldType, aProp.Value);
+                                    fieldd.SetValue(instance, converted);
                                 }
+                                catch (System.InvalidCastException) { }
+                                catch (System.FormatException) { }
                             }
                         }
+                        //}
                     }
                     else
                     {
                         var colName = columnNames[c];
-                        
+
                         // Try exact match first
                         if (propMap.TryGetValue(colName, out var prop))
                         {
@@ -338,7 +422,7 @@ namespace KuzuDot
                             catch (System.FormatException) { }
                             continue;
                         }
-                        
+
                         // Try with stripped prefix (e.g., "p.name" -> "name")
                         var strippedName = StripColumnPrefix(colName);
                         if (strippedName != colName)
@@ -376,7 +460,7 @@ namespace KuzuDot
         /// Async counterpart to Query<T>(string) with cancellation support.
         /// </summary>
         public Task<IReadOnlyList<T>> QueryAsync<T>(string query, System.Threading.CancellationToken cancellationToken = default) where T : new()
-            => System.Threading.Tasks.Task.Run(() =>
+            => Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 try
@@ -393,28 +477,6 @@ namespace KuzuDot
                     throw;
                 }
             }, cancellationToken);
-
-        /// <summary>
-        /// Strips common column prefixes from column names to improve POCO mapping.
-        /// Examples: "p.name" -> "name", "a.age" -> "age", "user.email" -> "email"
-        /// </summary>
-        private static string StripColumnPrefix(string columnName)
-        {
-            if (string.IsNullOrEmpty(columnName))
-                return columnName;
-
-            // Look for the first dot in the column name
-#pragma warning disable CA1307 // Specify StringComparison for clarity
-            var dotIndex = columnName.IndexOf('.');
-#pragma warning restore CA1307 // Specify StringComparison for clarity
-            if (dotIndex > 0 && dotIndex < columnName.Length - 1)
-            {
-                // Extract the part after the dot
-                return columnName.Substring(dotIndex + 1);
-            }
-
-            return columnName;
-        }
 
         /// <summary>
         /// Async wrapper for <see cref="Query"/> using Task.Run (initial implementation; no true async I/O yet).
@@ -598,6 +660,56 @@ namespace KuzuDot
             }
         }
 
+        private static List<SchemaTable> GetTablesFromResults(QueryResult results)
+        {
+            if (!results.IsSuccess)
+                throw new KuzuException($"Failed to get table names: {results.ErrorMessage}");
+
+            var tables = new List<SchemaTable>();
+
+            while (results.HasNext())
+            {
+                using var row = results.GetNext();
+                tables.Add(new SchemaTable
+                {
+                    Id = row.GetValueAs<ulong>(0),
+                    Name = row.GetValueAs<string>(1),
+                    Type = row.GetValueAs<string>(2),
+                    Comment = row.GetValueAs<string>(3)
+                });
+            }
+
+            return tables;
+        }
+        /// <summary>
+        /// Strips common column prefixes from column names to improve POCO mapping.
+        /// Examples: "p.name" -> "name", "a.age" -> "age", "user.email" -> "email"
+        /// </summary>
+        private static string StripColumnPrefix(string columnName)
+        {
+            if (string.IsNullOrEmpty(columnName))
+                return columnName;
+
+            // Look for the first dot in the column name
+            var dotIndex =
+#if NET8_0_OR_GREATER
+                columnName.IndexOf('.', StringComparison.OrdinalIgnoreCase);
+#else
+                columnName.IndexOf('.');
+#endif
+            if (dotIndex > 0 && dotIndex < columnName.Length - 1)
+            {
+                // Extract the part after the dot
+#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
+                return columnName[(dotIndex + 1)..];
+#else
+                return columnName.Substring(dotIndex + 1);
+#endif
+            }
+
+
+            return columnName;
+        }
         private void InterruptSafe()
         {
             try { Interrupt(); }
@@ -605,7 +717,6 @@ namespace KuzuDot
             catch (KuzuException) { }
         }
 
-        
         private void NotDisposed()
         {
             KuzuGuard.NotDisposed(_handle.IsInvalid, nameof(Connection));
@@ -627,11 +738,13 @@ namespace KuzuDot
                 NativeStruct = default;
             }
         }
+
         private sealed class MaterializationCache<T> where T : new()
         {
-            internal static readonly MaterializationCache<T> Instance = new MaterializationCache<T>();
+            internal static readonly MaterializationCache<T> Instance = new();
             internal readonly Dictionary<string, System.Reflection.FieldInfo> FieldMap;
             internal readonly Dictionary<string, System.Reflection.PropertyInfo> PropMap;
+
             private MaterializationCache()
             {
                 PropMap = new Dictionary<string, System.Reflection.PropertyInfo>(System.StringComparer.OrdinalIgnoreCase);
@@ -643,10 +756,10 @@ namespace KuzuDot
                     if (!p.CanWrite) continue;
                     var attr = (KuzuNameAttribute?)Attribute.GetCustomAttribute(p, typeof(KuzuNameAttribute));
                     var logical = attr?.Name ?? p.Name;
-                    
+
                     // Add both the logical name and snake_case version for backward compatibility
                     if (!PropMap.ContainsKey(logical)) PropMap[logical] = p; // first win
-                    
+
                     // Also add snake_case version if it's different
                     var snakeCase = ToSnakeCase(logical);
                     if (snakeCase != logical && !PropMap.ContainsKey(snakeCase))
@@ -657,24 +770,24 @@ namespace KuzuDot
                 {
                     var attr = (KuzuNameAttribute?)Attribute.GetCustomAttribute(f, typeof(KuzuNameAttribute));
                     var logical = attr?.Name ?? f.Name;
-                    
+
                     // Add both the logical name and snake_case version for backward compatibility
                     if (!FieldMap.ContainsKey(logical)) FieldMap[logical] = f;
-                    
+
                     // Also add snake_case version if it's different
                     var snakeCase = ToSnakeCase(logical);
                     if (snakeCase != logical && !FieldMap.ContainsKey(snakeCase))
                         FieldMap[snakeCase] = f;
                 }
             }
-            
+
             private static string ToSnakeCase(string input)
             {
                 if (string.IsNullOrEmpty(input)) return string.Empty;
-                
+
                 var result = new System.Text.StringBuilder();
                 bool isFirst = true;
-                
+
                 foreach (char c in input)
                 {
                     if (char.IsUpper(c))
@@ -689,7 +802,7 @@ namespace KuzuDot
                     }
                     isFirst = false;
                 }
-                
+
                 return result.ToString();
             }
         }

@@ -89,6 +89,77 @@ namespace KuzuDot.Tests.ConnectionTests
 
         #endregion
 
+        #region Schema/Table Info
+
+        [TestMethod]
+        public void GetTables_ShouldReturnAllTables()
+        {
+            EnsureNativeLibraryAvailable();
+            using var connection = _database!.Connect();
+            // Create tables
+            connection.NonQuery("CREATE NODE TABLE Person(name STRING, age INT64, PRIMARY KEY(name));");
+            connection.NonQuery("CREATE NODE TABLE Company(name STRING, PRIMARY KEY(name));");
+            connection.NonQuery("CREATE REL TABLE WorksAt(FROM Person TO Company, since INT64);");
+
+            var tables = connection.GetTables();
+            Assert.IsNotNull(tables);
+            Assert.IsGreaterThanOrEqualTo(3, tables.Count, "Should have at least 3 tables");
+            Assert.IsTrue(tables.Any(t => t.Name == "Person"));
+            Assert.IsTrue(tables.Any(t => t.Name == "Company"));
+            Assert.IsTrue(tables.Any(t => t.Name == "WorksAt"));
+        }
+
+        [TestMethod]
+        public void GetNodeTables_ShouldReturnOnlyNodeTables()
+        {
+            EnsureNativeLibraryAvailable();
+            using var connection = _database!.Connect();
+            connection.NonQuery("CREATE NODE TABLE Person(name STRING, age INT64, PRIMARY KEY(name));");
+            connection.NonQuery("CREATE NODE TABLE Company(name STRING, PRIMARY KEY(name));");
+            connection.NonQuery("CREATE REL TABLE WorksAt(FROM Person TO Company, since INT64);");
+
+            var nodeTables = connection.GetNodeTables();
+            Assert.IsNotNull(nodeTables);
+            Assert.IsTrue(nodeTables.All(t => t.Type == "NODE"));
+            Assert.IsTrue(nodeTables.Any(t => t.Name == "Person"));
+            Assert.IsTrue(nodeTables.Any(t => t.Name == "Company"));
+            Assert.IsFalse(nodeTables.Any(t => t.Name == "WorksAt"));
+        }
+
+        [TestMethod]
+        public void GetRelTables_ShouldReturnOnlyRelTables()
+        {
+            EnsureNativeLibraryAvailable();
+            using var connection = _database!.Connect();
+            connection.NonQuery("CREATE NODE TABLE Person(name STRING, age INT64, PRIMARY KEY(name));");
+            connection.NonQuery("CREATE NODE TABLE Company(name STRING, PRIMARY KEY(name));");
+            connection.NonQuery("CREATE REL TABLE WorksAt(FROM Person TO Company, since INT64);");
+
+            var relTables = connection.GetRelTables();
+            Assert.IsNotNull(relTables);
+            Assert.IsTrue(relTables.All(t => t.Type == "REL"));
+            Assert.IsTrue(relTables.Any(t => t.Name == "WorksAt"));
+            Assert.IsFalse(relTables.Any(t => t.Name == "Person"));
+            Assert.IsFalse(relTables.Any(t => t.Name == "Company"));
+        }
+
+        [TestMethod]
+        public void GetTableInfo_ShouldReturnSchemaProperties()
+        {
+            EnsureNativeLibraryAvailable();
+            using var connection = _database!.Connect();
+            connection.NonQuery("CREATE NODE TABLE Person(name STRING, age INT64, PRIMARY KEY(name));");
+            var tables = connection.GetTables();
+            var personTable = tables.First(t => t.Name == "Person");
+            var info = connection.GetTableInfo(personTable.Id);
+            Assert.IsNotNull(info);
+            Assert.IsTrue(info.Any(p => p.Name == "name" && p.Type == "STRING"));
+            Assert.IsTrue(info.Any(p => p.Name == "age" && p.Type == "INT64"));
+            Assert.IsTrue(info.Any(p => p.IsPrimaryKey));
+        }
+
+        #endregion
+
         #region Prepared Statement Operations
 
         [TestMethod]
@@ -164,7 +235,7 @@ namespace KuzuDot.Tests.ConnectionTests
 
             // Get initial value
             var initialThreads = connection.MaxNumThreadsForExecution;
-            Assert.IsTrue(initialThreads > 0, "Initial thread count should be positive");
+            Assert.IsGreaterThan<ulong>(0, initialThreads, "Initial thread count should be positive");
 
             // Set new value
             var newThreadCount = initialThreads == 1 ? 2UL : 1UL;
@@ -214,7 +285,7 @@ namespace KuzuDot.Tests.ConnectionTests
             {
                 connection.MaxNumThreadsForExecution = 0;
                 // If it doesn't throw, verify that it's been set to some valid value
-                Assert.IsTrue(connection.MaxNumThreadsForExecution >= 1);
+                Assert.IsGreaterThanOrEqualTo<ulong>(1, connection.MaxNumThreadsForExecution);
             }
             catch (KuzuException)
             {
@@ -237,8 +308,8 @@ namespace KuzuDot.Tests.ConnectionTests
 
                 // The implementation might cap this to a reasonable value
                 var actualThreads = connection.MaxNumThreadsForExecution;
-                Assert.IsTrue(actualThreads > 0);
-                Assert.IsTrue(actualThreads <= 1000);
+                Assert.IsGreaterThan<ulong>(0, actualThreads);
+                Assert.IsLessThanOrEqualTo<ulong>(1000, actualThreads);
             }
             finally
             {
@@ -288,18 +359,16 @@ namespace KuzuDot.Tests.ConnectionTests
             // Test that interrupt doesn't crash the connection
             var interruptTask = Task.Run(async () =>
             {
-                await Task.Delay(50).ConfigureAwait(false); // Wait a bit, then interrupt
+                await Task.Delay(50, TestContext.CancellationToken).ConfigureAwait(false); // Wait a bit, then interrupt
                 connection.Interrupt();
-            });
+            }, TestContext.CancellationToken);
 
             try
             {
                 // Run a simple query (in a real scenario, this would be a long-running query)
 #pragma warning disable CA1849 // Call async methods when in an async method
-                using (var queryResult = connection.Query("MATCH (n:TestNode) RETURN n.id"))
-                {
-                    // The query might succeed or be interrupted, both are valid
-                }
+                using var queryResult = connection.Query("MATCH (n:TestNode) RETURN n.id");
+                // The query might succeed or be interrupted, both are valid
 #pragma warning restore CA1849 // Call async methods when in an async method
             }
             catch (KuzuException)
@@ -309,6 +378,8 @@ namespace KuzuDot.Tests.ConnectionTests
 
             await interruptTask.ConfigureAwait(false);
         }
+
+        public TestContext TestContext { get; set; }
 
         #endregion
     }
