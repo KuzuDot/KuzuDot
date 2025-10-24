@@ -1,3 +1,5 @@
+using KuzuDot.Enums;
+
 namespace KuzuDot.Tests.ConnectionTests
 {
     /// <summary>
@@ -380,6 +382,147 @@ namespace KuzuDot.Tests.ConnectionTests
         }
 
         public TestContext TestContext { get; set; }
+
+        #endregion
+
+        #region Column Operations
+
+        [TestMethod]
+        public void AddColumn_ShouldAddColumnToTable()
+        {
+            EnsureNativeLibraryAvailable();
+            using var connection = _database!.Connect();
+            // Create a node table
+            connection.NonQuery("CREATE NODE TABLE TestAddCol(id INT64, PRIMARY KEY(id));");
+            // Add a column
+            connection.AddColumn("TestAddCol", "extra", KuzuDataTypeId.KuzuString);
+            connection.AddColumn<long>("TestAddCol", "number", "42");
+            
+            // Verify column exists
+            var info = connection.GetTableInfo("TestAddCol");
+            Assert.IsTrue(info.Any(p => p.Name == "extra" && p.Type == "STRING"));
+            Assert.IsTrue(info.Any(p => p.Name == "number" && p.Type == "INT64"));
+
+            // Should not throw
+            connection.AddColumnIfNotExists("TestAddCol", "number", KuzuDataTypeId.KuzuInt16); 
+        }
+
+        [TestMethod]
+        public void DropColumn_ShouldRemoveColumnFromTable()
+        {
+            EnsureNativeLibraryAvailable();
+            using var connection = _database!.Connect();
+            // Create a node table
+            connection.NonQuery("CREATE NODE TABLE TestDropCol(id INT64, PRIMARY KEY(id));");
+            // Add a column
+            connection.AddColumn("TestDropCol", "to_remove", KuzuDataTypeId.KuzuInt32);
+            // Verify column exists
+            var infoBefore = connection.GetTableInfo("TestDropCol");
+            Assert.IsTrue(infoBefore.Any(p => p.Name == "to_remove" && p.Type == "INT32"));
+            // Drop the column
+            connection.DropColumn("TestDropCol", "to_remove");
+            // Verify column no longer exists
+            var infoAfter = connection.GetTableInfo("TestDropCol");
+            Assert.IsFalse(infoAfter.Any(p => p.Name == "to_remove"));
+
+            connection.DropColumnIfExists("TestDropCol", "non_existent_column"); // Should not throw
+        }
+
+        #endregion
+
+        #region Connection Operations
+
+        [TestMethod]
+        public void ShowConnections_ShouldReturnRelationshipConnections()
+        {
+            EnsureNativeLibraryAvailable();
+            using var connection = _database!.Connect();
+            // Create two node tables
+            connection.NonQuery("CREATE NODE TABLE NodeA(id INT64, PRIMARY KEY(id));");
+            connection.NonQuery("CREATE NODE TABLE NodeB(id INT64, PRIMARY KEY(id));");
+            // Create a relationship table between them
+            connection.NonQuery("CREATE REL TABLE RelAB(FROM NodeA TO NodeB, since INT64);");
+            // Show connections
+            var connections = connection.GetConnections("RelAB");
+            Assert.IsNotNull(connections);
+            Assert.IsTrue(connections.Any(c => c.SourceTable == "NodeA" && c.TargetTable == "NodeB"));
+        }
+
+        public void AddConnection_ShouldCreateConnectionBetweenTables()
+        {
+            EnsureNativeLibraryAvailable();
+            using var connection = _database!.Connect();
+            // Create two node tables
+            connection.NonQuery("CREATE NODE TABLE NodeX(id INT64, PRIMARY KEY(id));");
+            connection.NonQuery("CREATE NODE TABLE NodeY(id INT64, PRIMARY KEY(id));");
+            // Create a relationship table between them
+            connection.NonQuery("CREATE REL TABLE RelXY(FROM NodeX TO NodeY, since INT64);");
+            // Add connection in reverse direction
+            connection.AddConnection("RelXY", "NodeY", "NodeX");
+            // Verify connection exists
+            var connections = connection.GetConnections("RelXY");
+            Assert.IsTrue(connections.Any(c => c.SourceTable == "NodeX" && c.TargetTable == "NodeY"));
+            // The added connection in reverse
+            Assert.IsTrue(connections.Any(c => c.SourceTable == "NodeY" && c.TargetTable == "NodeX"));
+        }
+
+        public void DropConnection_ShouldDropConnectionBetweenTables()
+        {
+            EnsureNativeLibraryAvailable();
+            using var connection = _database!.Connect();
+            // Create two node tables
+            connection.NonQuery("CREATE NODE TABLE NodeX(id INT64, PRIMARY KEY(id));");
+            connection.NonQuery("CREATE NODE TABLE NodeY(id INT64, PRIMARY KEY(id));");
+            // Create a relationship table between them
+            connection.NonQuery("CREATE REL TABLE RelXY(FROM NodeX TO NodeY, since INT64);");
+            // Add connection in reverse direction
+            connection.AddConnection("RelXY", "NodeY", "NodeX");
+            // Verify connection exists
+            var connections = connection.GetConnections("RelXY");
+            Assert.IsTrue(connections.Any(c => c.SourceTable == "NodeX" && c.TargetTable == "NodeY"));
+            // The added connection in reverse
+            Assert.IsTrue(connections.Any(c => c.SourceTable == "NodeY" && c.TargetTable == "NodeX"));
+
+            // Drop the added connection
+            connection.DropConnection("RelXY", "NodeY", "NodeX");
+            // Verify connection no longer exists
+            var updatedConnections = connection.GetConnections("RelXY");
+            Assert.IsFalse(updatedConnections.Any(c => c.SourceTable == "NodeY" && c.TargetTable == "NodeX"));
+        }
+
+        #endregion
+
+        #region Rename Operations
+
+        [TestMethod]
+        public void RenameColumn_ShouldRenameColumnSuccessfully()
+        {
+            EnsureNativeLibraryAvailable();
+            using var connection = _database!.Connect();
+            // Create a node table with a column
+            connection.NonQuery("CREATE NODE TABLE RenameColTest(id INT64, oldname STRING, PRIMARY KEY(id));");
+            // Rename the column
+            connection.RenameColumn("RenameColTest", "oldname", "newname");
+            // Verify new column exists, old does not
+            var info = connection.GetTableInfo("RenameColTest");
+            Assert.IsTrue(info.Any(p => p.Name == "newname"));
+            Assert.IsFalse(info.Any(p => p.Name == "oldname"));
+        }
+
+        [TestMethod]
+        public void RenameTable_ShouldRenameTableSuccessfully()
+        {
+            EnsureNativeLibraryAvailable();
+            using var connection = _database!.Connect();
+            // Create a node table
+            connection.NonQuery("CREATE NODE TABLE OldTableName(id INT64, PRIMARY KEY(id));");
+            // Rename the table
+            connection.RenameTable("OldTableName", "NewTableName");
+            // Verify new table exists, old does not
+            var tables = connection.GetTables();
+            Assert.IsTrue(tables.Any(t => t.Name == "NewTableName"));
+            Assert.IsFalse(tables.Any(t => t.Name == "OldTableName"));
+        }
 
         #endregion
     }

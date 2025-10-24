@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
@@ -48,11 +49,209 @@ namespace KuzuDot
         }
 
         /// <summary>
+        /// Adds a new column to the specified table with the given data type and optional default expression.
+        /// </summary>
+        /// <param name="tableName">The name of the table to which the column will be added. Cannot be null or empty.</param>
+        /// <param name="columName">The name of the column to add. Cannot be null or empty.</param>
+        /// <param name="typeId">The data type identifier for the new column.</param>
+        /// <param name="defaultExpression">An optional default expression for the column. If null, the column will not have a default value.</param>
+        public void AddColumn(string tableName, string columName, KuzuDataTypeId typeId, string? defaultExpression = null)
+        {
+            AddColumnInternal(tableName, columName, typeId, defaultExpression);
+        }
+
+        /// <summary>
+        /// Adds a new column of the specified type to the given table, optionally setting a default value expression.
+        /// </summary>
+        /// <typeparam name="T">The data type of the column to add. Must be a supported type recognized by the data model.</typeparam>
+        /// <param name="tableName">The name of the table to which the column will be added. Cannot be null or empty.</param>
+        /// <param name="columName">The name of the column to add. Cannot be null or empty.</param>
+        /// <param name="defaultExpression">An optional expression that defines the default value for the new column. If null, no default value is set.</param>
+        public void AddColumn<T>(string tableName, string columName, string? defaultExpression = null)
+        {
+            var typeId = DataType.GetIdFromType(typeof(T));
+            AddColumnInternal(tableName, columName, typeId, defaultExpression);
+        }
+
+        /// <summary>
+        /// Adds a new column to the specified table if a column with the given name does not already exist.
+        /// </summary>
+        /// <remarks>If the column already exists in the specified table, no changes are made and the
+        /// operation is ignored. This method is useful for schema migrations where adding duplicate columns should be
+        /// avoided.</remarks>
+        /// <param name="tableName">The name of the table to which the column will be added. Cannot be null or empty.</param>
+        /// <param name="columName">The name of the column to add. Cannot be null or empty.</param>
+        /// <param name="typeId">The data type identifier for the new column.</param>
+        /// <param name="defaultExpression">An optional default expression to assign to the new column. If null, no default value is set.</param>
+        public void AddColumnIfNotExists(string tableName, string columName, KuzuDataTypeId typeId, string? defaultExpression = null)
+        {
+            AddColumnInternal(tableName, columName, typeId, defaultExpression, ifNotExists: true);
+        }
+
+        /// <summary>
+        /// Adds a connection (relationship) between two tables (nodes) in the database schema.
+        /// Shorthand for "ALTER TABLE {label} ADD FROM {from} TO {to};"
+        /// </summary>
+        /// <param name="label">Relationship Label</param>
+        /// <param name="from">From Node Table</param>
+        /// <param name="to">To Node Table</param>
+        public void AddConnection(string label, string from, string to)
+        {
+            KuzuGuard.NotNullOrEmpty(label, nameof(label));
+            KuzuGuard.NotNullOrEmpty(from, nameof(from));
+            KuzuGuard.NotNullOrEmpty(to, nameof(to));
+            var query = $"ALTER TABLE {label} ADD FROM {from} TO {to};";
+            using var result = Query(query);
+            if (!result.IsSuccess)
+                throw new KuzuException($"Failed to add connection on rel table '{label}': {result.ErrorMessage}");
+        }
+
+        /// <summary>
+        /// Adds a connection between two nodes in the specified relationship table if the connection does not already
+        /// exist.
+        /// </summary>
+        /// <param name="label">The name of the relationship table to which the connection will be added. Cannot be null or empty.</param>
+        /// <param name="from">The source node. Cannot be null or empty.</param>
+        /// <param name="to">The target node. Cannot be null or empty.</param>
+        /// <exception cref="KuzuException">Thrown if the connection could not be added.</exception>
+        public void AddConnectionIfNotExists(string label, string from, string to)
+        {
+            KuzuGuard.NotNullOrEmpty(label, nameof(label));
+            KuzuGuard.NotNullOrEmpty(from, nameof(from));
+            KuzuGuard.NotNullOrEmpty(to, nameof(to));
+            var query = $"ALTER TABLE {label} ADD IF NOT EXISTS FROM {from} TO {to};";
+            using var result = Query(query);
+            if (!result.IsSuccess)
+                throw new KuzuException($"Failed to add connection on rel table '{label}': {result.ErrorMessage}");
+        }
+
+        /// <summary>
+        /// Alias for COMMENT ON TABLE {name} IS '{comment}'; query
+        /// </summary>
+        /// <param name="tableName"></param>
+        public void CommentOnTable(string tableName, string comment)
+        {
+            KuzuGuard.NotNullOrEmpty(tableName, nameof(tableName));
+            var query = $"COMMENT ON TABLE {tableName} IS '{comment}';";
+            using var result = Query(query);
+            if (!result.IsSuccess)
+                throw new KuzuException($"Failed to set comment on table '{tableName}': {result.ErrorMessage}");
+        }
+
+        public bool CreateNodeTable(string label, IEnumerable<SchemaProperty>? properties = null)
+        {
+            NotDisposed();
+            KuzuGuard.NotNullOrEmpty(label, nameof(label));
+            var propsString = "";
+            if (properties != null && properties.Any())
+            {
+                var propsList = properties.Select(kv => $"{kv.Name} {kv.Type}"
+                                                      + (!string.IsNullOrEmpty(kv.DefaultExpression)
+                                                        ? $" DEFAULT {kv.DefaultExpression}" : "")
+                                                      + (kv.IsPrimaryKey ? " PRIMARY KEY" : ""));
+                propsString = "{" + string.Join(", ", propsList) + "}";
+            }
+            var query = $"CREATE NODE TABLE {label}({propsString});";
+            using var result = Query(query);
+            return result.IsSuccess;
+        }
+
+        public bool CreateRelTable(string label, string from, string to, IEnumerable<SchemaProperty>? properties = null)
+        {
+            NotDisposed();
+            KuzuGuard.NotNullOrEmpty(label, nameof(label));
+            KuzuGuard.NotNullOrEmpty(from, nameof(from));
+            KuzuGuard.NotNullOrEmpty(to, nameof(to));
+            var propsString = "";
+            if (properties != null && properties.Any())
+            {
+                var propsList = properties.Select(kv => $"{kv.Name} {kv.Type}"
+                                                      + (!string.IsNullOrEmpty(kv.DefaultExpression)
+                                                        ? $" DEFAULT {kv.DefaultExpression}" : "")
+                                                 );
+                propsString = "{" + string.Join(", ", propsList) + "}";
+            }
+            var query = $"CREATE REL TABLE {label}(FROM {from} TO {to}, {propsString});";
+            using var result = Query(query);
+            return result.IsSuccess;
+        }
+
+        /// <summary>
         /// Releases all resources used by the <see cref="Connection"/>.
         /// </summary>
         public void Dispose()
         {
             _handle.Dispose();
+        }
+
+        /// <summary>
+        /// Removes a column from the specified table in the database schema.
+        /// </summary>
+        /// <param name="tableName">The name of the table from which the column will be removed. Cannot be null or empty.</param>
+        /// <param name="columnName">The name of the column to remove from the table. Cannot be null.</param>
+        /// <exception cref="KuzuException">Thrown if the column cannot be dropped from the specified table, such as when the operation fails or the
+        /// table or column does not exist.</exception>
+        public void DropColumn(string tableName, string columnName)
+        {
+            NotDisposed();
+            KuzuGuard.NotNullOrEmpty(tableName, nameof(tableName));
+            KuzuGuard.NotNull(columnName, nameof(columnName));
+            var query = $"ALTER TABLE {tableName} DROP {columnName};";
+            using var result = Query(query);
+            if (!result.IsSuccess)
+                throw new KuzuException($"Failed to drop column '{columnName}' from table '{tableName}': {result.ErrorMessage}");
+        }
+
+        /// <summary>
+        /// Drops the specified column from the given table if the column exists.
+        /// </summary>
+        /// <param name="tableName">The name of the table from which the column will be dropped. Cannot be null or empty.</param>
+        /// <param name="columnName">The name of the column to drop. Cannot be null.</param>
+        /// <exception cref="KuzuException">Thrown if the operation fails to drop the column from the specified table.</exception>
+        public void DropColumnIfExists(string tableName, string columnName)
+        {
+            NotDisposed();
+            KuzuGuard.NotNullOrEmpty(tableName, nameof(tableName));
+            KuzuGuard.NotNull(columnName, nameof(columnName));
+            var query = $"ALTER TABLE {tableName} DROP IF EXISTS {columnName};";
+            using var result = Query(query);
+            if (!result.IsSuccess)
+                throw new KuzuException($"Failed to drop column '{columnName}' from table '{tableName}': {result.ErrorMessage}");
+        }
+
+        /// <summary>
+        /// Removes a connection between two nodes in the specified relationship table.
+        /// </summary>
+        /// <param name="label">The name of the relationship table.</param>
+        /// <param name="from">The source node table in the connection to be removed.</param>
+        /// <param name="to">The target node table in the connection to be removed.</param>
+        /// <exception cref="KuzuException">Thrown if the connection cannot be dropped due to an error in the underlying database operation.</exception>
+        public void DropConnection(string label, string from, string to)
+        {
+            KuzuGuard.NotNullOrEmpty(label, nameof(label));
+            KuzuGuard.NotNullOrEmpty(from, nameof(from));
+            KuzuGuard.NotNullOrEmpty(to, nameof(to));
+            var query = $"ALTER TABLE {label} DROP FROM {from} TO {to};";
+            using var result = Query(query);
+            if (!result.IsSuccess)
+                throw new KuzuException($"Failed to drop connection on rel table '{label}': {result.ErrorMessage}");
+        }
+
+        /// <summary>
+        /// Drops the specified table from the database schema.
+        /// </summary>
+        /// <param name="tableName">The name of the table to drop. Cannot be null or empty.</param>
+        /// <param name="ifExists">Specifies whether to drop the table only if it exists. If <see langword="true"/>, no error is raised if the
+        /// table does not exist; otherwise, an exception is thrown if the table is missing.</param>
+        /// <exception cref="KuzuException">Thrown if the table cannot be dropped, such as when the table does not exist and <paramref name="ifExists"/>
+        /// is <see langword="false"/>, or if a database error occurs.</exception>
+        public void DropTable(string tableName, bool ifExists = false)
+        {
+            KuzuGuard.NotNullOrEmpty(tableName, nameof(tableName));
+            var query = $"DROP TABLE " + (ifExists ? "IF EXISTS " : "") + $"{tableName};";
+            using var result = Query(query);
+            if (!result.IsSuccess)
+                throw new KuzuException($"Failed to drop table '{tableName}': {result.ErrorMessage}");
         }
 
         /// <summary>
@@ -115,6 +314,36 @@ namespace KuzuDot
             return row.GetValueAs<T>(0);
         }
 
+        /// <summary>
+        /// Retrieves a read-only list of schema connections for the specified relationship table label.
+        /// </summary>
+        /// <param name="label">The label of the relationship table for which to show connections. Cannot be null or empty.</param>
+        /// <returns>An IReadOnlyList containing SchemaConnection objects that describe the source and target tables, along with
+        /// their primary keys, for the specified relationship table. The list will be empty if no connections are
+        /// found.</returns>
+        /// <exception cref="KuzuException">Thrown if the operation fails to retrieve connections for the specified relationship table label.</exception>
+        public IReadOnlyList<SchemaConnection> GetConnections(string label)
+        {
+            KuzuGuard.NotNullOrEmpty(label, nameof(label));
+            var query = $"CALL show_connection('{label}') RETURN *;";
+            using var result = Query(query);
+            if (!result.IsSuccess)
+                throw new KuzuException($"Failed to show connections on rel table '{label}': {result.ErrorMessage}");
+            var connections = new List<SchemaConnection>();
+            while (result.HasNext())
+            {
+                using var row = result.GetNext();
+                connections.Add(new SchemaConnection
+                {
+                    SourceTable = row.GetValueAs<string>(0),
+                    TargetTable = row.GetValueAs<string>(1),
+                    SourcePrimaryKey = row.GetValueAs<string>(2),
+                    TargetPrimaryKey = row.GetValueAs<string>(3)
+                });
+            }
+            return connections;
+        }
+
         public IReadOnlyList<SchemaTable> GetNodeTables()
         {
             NotDisposed();
@@ -141,7 +370,9 @@ namespace KuzuDot
         public SchemaTable GetTableById(ulong id)
         {
             NotDisposed();
-            using var results = Query($"CALL show_tables() WHERE id = {id} RETURN *;");
+            using var ps = Prepare("CALL show_tables() WHERE id = $id RETURN *;");
+            ps.BindUInt64(nameof(id), id);
+            using var results = ps.Execute();
             return GetTablesFromResults(results).Single();
         }
 
@@ -171,6 +402,7 @@ namespace KuzuDot
 
             var columns = new List<SchemaProperty>();
 
+            // Note: can't use prepared statement, table name must be literal, not param
             using var results = Query($"CALL table_info('{tableName}') RETURN *;");
             if (!results.IsSuccess) throw new KuzuException($"Failed to get table info for table '{tableName}': {results.ErrorMessage}");
             while (results.HasNext())
@@ -335,6 +567,7 @@ namespace KuzuDot
             foreach (var item in QueryEnumerable(query, projector)) list.Add(item);
             return list;
         }
+
         /// <summary>
         /// Executes a query and materializes each row into a new instance of T using public settable properties and fields.
         /// Property/field names are matched (case-insensitive) against column names.
@@ -554,6 +787,42 @@ namespace KuzuDot
         }
 
         /// <summary>
+        /// Renames an existing column in the specified table to a new name.
+        /// </summary>
+        /// <param name="tableName">The name of the table containing the column to rename. Cannot be null or empty.</param>
+        /// <param name="oldColumnName">The current name of the column to be renamed. Cannot be null or empty.</param>
+        /// <param name="newColumnName">The new name to assign to the column. Cannot be null or empty.</param>
+        /// <exception cref="KuzuException">Thrown if the column cannot be renamed, such as when the table or column does not exist, or if the operation
+        /// fails for any other reason.</exception>
+        public void RenameColumn(string tableName, string oldColumnName, string newColumnName)
+        {
+            NotDisposed();
+            KuzuGuard.NotNullOrEmpty(tableName, nameof(tableName));
+            KuzuGuard.NotNullOrEmpty(oldColumnName, nameof(oldColumnName));
+            KuzuGuard.NotNullOrEmpty(newColumnName, nameof(newColumnName));
+            var query = $"ALTER TABLE {tableName} RENAME {oldColumnName} TO {newColumnName};";
+            using var result = Query(query);
+            if (!result.IsSuccess)
+                throw new KuzuException($"Failed to rename column '{oldColumnName}' to '{newColumnName}' on table '{tableName}': {result.ErrorMessage}");
+        }
+
+        /// <summary>
+        /// Renames an existing table in the database to a new specified name.
+        /// </summary>
+        /// <param name="oldName">The current name of the table to be renamed.</param>
+        /// <param name="newName">The new name to assign to the table.</param>
+        /// <exception cref="KuzuException">Thrown if the table cannot be renamed, such as when the operation fails or the specified table does not
+        /// exist.</exception>
+        public void RenameTable(string oldName, string newName)
+        {
+            KuzuGuard.NotNullOrEmpty(oldName, nameof(oldName));
+            KuzuGuard.NotNullOrEmpty(newName, nameof(newName));
+            var query = $"ALTER TABLE {oldName} RENAME TO {newName};";
+            using var result = Query(query);
+            if (!result.IsSuccess)
+                throw new KuzuException($"Failed to rename table '{oldName}' to '{newName}': {result.ErrorMessage}");
+        }
+        /// <summary>
         /// Sets the query timeout value in milliseconds for this connection.
         /// </summary>
         public void SetQueryTimeout(ulong timeoutMs)
@@ -562,7 +831,6 @@ namespace KuzuDot
             var state = NativeMethods.kuzu_connection_set_query_timeout(ref _handle.NativeStruct, timeoutMs);
             KuzuGuard.CheckSuccess(state, "Failed to set query timeout");
         }
-
         /// <summary>
         /// Returns a string that represents the current object.
         /// </summary>
@@ -681,35 +949,43 @@ namespace KuzuDot
 
             return tables;
         }
+
         /// <summary>
         /// Strips common column prefixes from column names to improve POCO mapping.
         /// Examples: "p.name" -> "name", "a.age" -> "age", "user.email" -> "email"
         /// </summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1307:Specify StringComparison for clarity", Justification = "<Pending>")]
         private static string StripColumnPrefix(string columnName)
         {
             if (string.IsNullOrEmpty(columnName))
                 return columnName;
 
             // Look for the first dot in the column name
-            var dotIndex =
-#if NET8_0_OR_GREATER
-                columnName.IndexOf('.', StringComparison.OrdinalIgnoreCase);
-#else
-                columnName.IndexOf('.');
-#endif
+            var dotIndex = columnName!.IndexOf('.');
             if (dotIndex > 0 && dotIndex < columnName.Length - 1)
             {
                 // Extract the part after the dot
-#if NETSTANDARD2_1_OR_GREATER || NET5_0_OR_GREATER
-                return columnName[(dotIndex + 1)..];
-#else
                 return columnName.Substring(dotIndex + 1);
-#endif
             }
-
 
             return columnName;
         }
+
+        private void AddColumnInternal(string tableName, string columName, KuzuDataTypeId typeId, string? defaultExpression = null, bool ifNotExists = false)
+        {
+            NotDisposed();
+            KuzuGuard.NotNullOrEmpty(tableName, nameof(tableName));
+            KuzuGuard.NotNull(columName, nameof(columName));
+            var query = $"ALTER TABLE {tableName} ADD "
+                        + (ifNotExists ? "IF NOT EXISTS " : "")
+                        + $"{columName} {DataType.GetNameFromType(typeId)}"
+                        + (!string.IsNullOrEmpty(defaultExpression)
+                            ? $" DEFAULT {defaultExpression};" : ";");
+            using var result = Query(query);
+            if (!result.IsSuccess)
+                throw new KuzuException($"Failed to add column '{columName}' to table '{tableName}': {result.ErrorMessage}");
+        }
+
         private void InterruptSafe()
         {
             try { Interrupt(); }
