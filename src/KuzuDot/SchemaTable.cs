@@ -9,5 +9,6 @@
         public string Name { get; set; } = default!;
         public string Type { get; set; } = default!;
         public string Comment { get; set; } = default!;
+        public string DatabaseName { get; set; } = default!;
     }
 }
