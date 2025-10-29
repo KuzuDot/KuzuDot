@@ -86,7 +86,7 @@ namespace KuzuDot.Tests.ConnectionTests
             var connection = _database!.Connect();
             connection.Dispose();
 
-            Assert.ThrowsExactly<ObjectDisposedException>(() => connection.NonQuery("SELECT 1;"));
+            Assert.ThrowsExactly<ObjectDisposedException>(() => connection.NonQuery("SELECT1;"));
         }
 
         #endregion
@@ -105,7 +105,7 @@ namespace KuzuDot.Tests.ConnectionTests
 
             var tables = connection.GetTables();
             Assert.IsNotNull(tables);
-            Assert.IsGreaterThanOrEqualTo(3, tables.Count, "Should have at least 3 tables");
+            Assert.IsGreaterThanOrEqualTo(3, tables.Count, "Should have at least3 tables");
             Assert.IsTrue(tables.Any(t => t.Name == "Person"));
             Assert.IsTrue(tables.Any(t => t.Name == "Company"));
             Assert.IsTrue(tables.Any(t => t.Name == "WorksAt"));
@@ -201,7 +201,7 @@ namespace KuzuDot.Tests.ConnectionTests
             var connection = _database!.Connect();
             connection.Dispose();
 
-            Assert.ThrowsExactly<ObjectDisposedException>(() => connection.Prepare("SELECT 1;"));
+            Assert.ThrowsExactly<ObjectDisposedException>(() => connection.Prepare("SELECT1;"));
         }
 
         [TestMethod]
@@ -216,7 +216,7 @@ namespace KuzuDot.Tests.ConnectionTests
 
             using var preparedStatement = connection.Prepare("CREATE (:Person {name: $name, age: $age});");
             preparedStatement.BindString("name", "Alice");
-            preparedStatement.BindInt64("age", 30);
+            preparedStatement.BindInt64("age",30);
 
             using var result = preparedStatement.Execute();
 
@@ -240,7 +240,7 @@ namespace KuzuDot.Tests.ConnectionTests
             Assert.IsGreaterThan<ulong>(0, initialThreads, "Initial thread count should be positive");
 
             // Set new value
-            var newThreadCount = initialThreads == 1 ? 2UL : 1UL;
+            var newThreadCount = initialThreads ==1 ?2UL :1UL;
             connection.MaxNumThreadsForExecution = newThreadCount;
 
             // Verify it was set
@@ -259,9 +259,9 @@ namespace KuzuDot.Tests.ConnectionTests
             using var connection = _database!.Connect();
 
             // Test setting various timeout values
-            connection.SetQueryTimeout(1000); // 1 second
-            connection.SetQueryTimeout(5000); // 5 seconds
-            connection.SetQueryTimeout(0);    // No timeout
+            connection.SetQueryTimeout(1000); //1 second
+            connection.SetQueryTimeout(5000); //5 seconds
+            connection.SetQueryTimeout(0); // No timeout
         }
 
         [TestMethod]
@@ -282,10 +282,10 @@ namespace KuzuDot.Tests.ConnectionTests
 
             using var connection = _database!.Connect();
 
-            // Setting thread count to 0 should either throw or be handled gracefully
+            // Setting thread count to0 should either throw or be handled gracefully
             try
             {
-                connection.MaxNumThreadsForExecution = 0;
+                connection.MaxNumThreadsForExecution =0;
                 // If it doesn't throw, verify that it's been set to some valid value
                 Assert.IsGreaterThanOrEqualTo<ulong>(1, connection.MaxNumThreadsForExecution);
             }
@@ -306,7 +306,7 @@ namespace KuzuDot.Tests.ConnectionTests
             try
             {
                 // Try setting a very large value
-                connection.MaxNumThreadsForExecution = 1000;
+                connection.MaxNumThreadsForExecution =1000;
 
                 // The implementation might cap this to a reasonable value
                 var actualThreads = connection.MaxNumThreadsForExecution;
@@ -344,186 +344,332 @@ namespace KuzuDot.Tests.ConnectionTests
 
             // Create a simple table for testing
 #pragma warning disable CA1849 // Call async methods when in an async method
-            using (var createResult = connection.Query("CREATE NODE TABLE TestNode(id INT64, PRIMARY KEY(id))"))
-            {
-                Assert.IsTrue(createResult.IsSuccess);
-            }
+ using (var createResult = connection.Query("CREATE NODE TABLE TestNode(id INT64, PRIMARY KEY(id))"))
+ {
+ Assert.IsTrue(createResult.IsSuccess);
+ }
 #pragma warning restore CA1849 // Call async methods when in an async method
 
-            // Insert some data
+ // Insert some data
 #pragma warning disable CA1849 // Call async methods when in an async method
-            using (var insertResult = connection.Query("CREATE (n:TestNode {id: 1})"))
-            {
-                Assert.IsTrue(insertResult.IsSuccess);
-            }
+ using (var insertResult = connection.Query("CREATE (n:TestNode {id:1})"))
+ {
+ Assert.IsTrue(insertResult.IsSuccess);
+ }
 #pragma warning restore CA1849 // Call async methods when in an async method
 
-            // Test that interrupt doesn't crash the connection
-            var interruptTask = Task.Run(async () =>
-            {
-                await Task.Delay(50, TestContext.CancellationToken).ConfigureAwait(false); // Wait a bit, then interrupt
-                connection.Interrupt();
-            }, TestContext.CancellationToken);
+ // Test that interrupt doesn't crash the connection
+ var interruptTask = Task.Run(async () =>
+ {
+ await Task.Delay(50, TestContext.CancellationToken).ConfigureAwait(false); // Wait a bit, then interrupt
+ connection.Interrupt();
+ }, TestContext.CancellationToken);
 
-            try
-            {
-                // Run a simple query (in a real scenario, this would be a long-running query)
+ try
+ {
+ // Run a simple query (in a real scenario, this would be a long-running query)
 #pragma warning disable CA1849 // Call async methods when in an async method
-                using var queryResult = connection.Query("MATCH (n:TestNode) RETURN n.id");
-                // The query might succeed or be interrupted, both are valid
+ using var queryResult = connection.Query("MATCH (n:TestNode) RETURN n.id");
+ // The query might succeed or be interrupted, both are valid
 #pragma warning restore CA1849 // Call async methods when in an async method
-            }
-            catch (KuzuException)
-            {
-                // Interruption might cause an exception, which is expected
-            }
+ }
+ catch (KuzuException)
+ {
+ // Interruption might cause an exception, which is expected
+ }
 
-            await interruptTask.ConfigureAwait(false);
-        }
+ await interruptTask.ConfigureAwait(false);
+ }
 
-        public TestContext TestContext { get; set; }
+ public TestContext TestContext { get; set; }
 
-        #endregion
+ #endregion
 
-        #region Column Operations
+ #region Column Operations
 
-        [TestMethod]
-        public void AddColumn_ShouldAddColumnToTable()
-        {
-            EnsureNativeLibraryAvailable();
-            using var connection = _database!.Connect();
-            // Create a node table
-            connection.NonQuery("CREATE NODE TABLE TestAddCol(id INT64, PRIMARY KEY(id));");
-            // Add a column
-            connection.AddColumn("TestAddCol", "extra", KuzuDataTypeId.KuzuString);
-            connection.AddColumn<long>("TestAddCol", "number", "42");
-            
-            // Verify column exists
-            var info = connection.GetTableInfo("TestAddCol");
-            Assert.IsTrue(info.Any(p => p.Name == "extra" && p.Type == "STRING"));
-            Assert.IsTrue(info.Any(p => p.Name == "number" && p.Type == "INT64"));
+ [TestMethod]
+ public void AddColumn_ShouldAddColumnToTable()
+ {
+ EnsureNativeLibraryAvailable();
+ using var connection = _database!.Connect();
+ // Create a node table
+ connection.NonQuery("CREATE NODE TABLE TestAddCol(id INT64, PRIMARY KEY(id));");
+ // Add a column
+ connection.AddColumn("TestAddCol", "extra", KuzuDataTypeId.KuzuString);
+ connection.AddColumn<long>("TestAddCol", "number", "42");
+ 
+ // Verify column exists
+ var info = connection.GetTableInfo("TestAddCol");
+ Assert.IsTrue(info.Any(p => p.Name == "extra" && p.Type == "STRING"));
+ Assert.IsTrue(info.Any(p => p.Name == "number" && p.Type == "INT64"));
 
-            // Should not throw
-            connection.AddColumnIfNotExists("TestAddCol", "number", KuzuDataTypeId.KuzuInt16); 
-        }
+ // Should not throw
+ connection.AddColumnIfNotExists("TestAddCol", "number", KuzuDataTypeId.KuzuInt16); 
+ }
 
-        [TestMethod]
-        public void DropColumn_ShouldRemoveColumnFromTable()
-        {
-            EnsureNativeLibraryAvailable();
-            using var connection = _database!.Connect();
-            // Create a node table
-            connection.NonQuery("CREATE NODE TABLE TestDropCol(id INT64, PRIMARY KEY(id));");
-            // Add a column
-            connection.AddColumn("TestDropCol", "to_remove", KuzuDataTypeId.KuzuInt32);
-            // Verify column exists
-            var infoBefore = connection.GetTableInfo("TestDropCol");
-            Assert.IsTrue(infoBefore.Any(p => p.Name == "to_remove" && p.Type == "INT32"));
-            // Drop the column
-            connection.DropColumn("TestDropCol", "to_remove");
-            // Verify column no longer exists
-            var infoAfter = connection.GetTableInfo("TestDropCol");
-            Assert.IsFalse(infoAfter.Any(p => p.Name == "to_remove"));
+ [TestMethod]
+ public void AddColumn_ShouldAddEscapedColumnToTable()
+ {
+ EnsureNativeLibraryAvailable();
+ using var connection = _database!.Connect();
+ // Create a node table
+ connection.NonQuery("CREATE NODE TABLE TestAddCol(id INT64, PRIMARY KEY(id));");
+ // Add a column
+ connection.AddColumn("TestAddCol", "`extra col`", KuzuDataTypeId.KuzuString);
+ connection.AddColumn<long>("TestAddCol", "`number one`", "42");
 
-            connection.DropColumnIfExists("TestDropCol", "non_existent_column"); // Should not throw
-        }
+ // Verify column exists
+ var info = connection.GetTableInfo("TestAddCol");
+ Assert.IsTrue(info.Any(p => p.Name == "extra col" && p.Type == "STRING"));
+ Assert.IsTrue(info.Any(p => p.Name == "number one" && p.Type == "INT64"));
 
-        #endregion
+ // Should not throw
+ connection.AddColumnIfNotExists("TestAddCol", "`number one`", KuzuDataTypeId.KuzuInt16);
+ }
 
-        #region Connection Operations
+ [TestMethod]
+ public void DropColumn_ShouldRemoveColumnFromTable()
+ {
+ EnsureNativeLibraryAvailable();
+ using var connection = _database!.Connect();
+ // Create a node table
+ connection.NonQuery("CREATE NODE TABLE TestDropCol(id INT64, PRIMARY KEY(id));");
+ // Add a column
+ connection.AddColumn("TestDropCol", "to_remove", KuzuDataTypeId.KuzuInt32);
+ // Verify column exists
+ var infoBefore = connection.GetTableInfo("TestDropCol");
+ Assert.IsTrue(infoBefore.Any(p => p.Name == "to_remove" && p.Type == "INT32"));
+ // Drop the column
+ connection.DropColumn("TestDropCol", "to_remove");
+ // Verify column no longer exists
+ var infoAfter = connection.GetTableInfo("TestDropCol");
+ Assert.IsFalse(infoAfter.Any(p => p.Name == "to_remove"));
 
-        [TestMethod]
-        public void ShowConnections_ShouldReturnRelationshipConnections()
-        {
-            EnsureNativeLibraryAvailable();
-            using var connection = _database!.Connect();
-            // Create two node tables
-            connection.NonQuery("CREATE NODE TABLE NodeA(id INT64, PRIMARY KEY(id));");
-            connection.NonQuery("CREATE NODE TABLE NodeB(id INT64, PRIMARY KEY(id));");
-            // Create a relationship table between them
-            connection.NonQuery("CREATE REL TABLE RelAB(FROM NodeA TO NodeB, since INT64);");
-            // Show connections
-            var connections = connection.GetConnections("RelAB");
-            Assert.IsNotNull(connections);
-            Assert.IsTrue(connections.Any(c => c.SourceTable == "NodeA" && c.TargetTable == "NodeB"));
-        }
+ connection.DropColumnIfExists("TestDropCol", "non_existent_column"); // Should not throw
+ }
 
-        public void AddConnection_ShouldCreateConnectionBetweenTables()
-        {
-            EnsureNativeLibraryAvailable();
-            using var connection = _database!.Connect();
-            // Create two node tables
-            connection.NonQuery("CREATE NODE TABLE NodeX(id INT64, PRIMARY KEY(id));");
-            connection.NonQuery("CREATE NODE TABLE NodeY(id INT64, PRIMARY KEY(id));");
-            // Create a relationship table between them
-            connection.NonQuery("CREATE REL TABLE RelXY(FROM NodeX TO NodeY, since INT64);");
-            // Add connection in reverse direction
-            connection.AddConnection("RelXY", "NodeY", "NodeX");
-            // Verify connection exists
-            var connections = connection.GetConnections("RelXY");
-            Assert.IsTrue(connections.Any(c => c.SourceTable == "NodeX" && c.TargetTable == "NodeY"));
-            // The added connection in reverse
-            Assert.IsTrue(connections.Any(c => c.SourceTable == "NodeY" && c.TargetTable == "NodeX"));
-        }
+ [TestMethod]
+ public void DropColumn_ShouldRemoveEscapedColumnFromTable()
+ {
+ EnsureNativeLibraryAvailable();
+ using var connection = _database!.Connect();
+ // Create a node table
+ connection.NonQuery("CREATE NODE TABLE TestDropCol(id INT64, PRIMARY KEY(id));");
+ // Add a column
+ connection.AddColumn("TestDropCol", "to remove", KuzuDataTypeId.KuzuInt32);
+ // Verify column exists
+ var infoBefore = connection.GetTableInfo("TestDropCol");
+ Assert.IsTrue(infoBefore.Any(p => p.Name == "to remove" && p.Type == "INT32"));
+ // Drop the column
+ connection.DropColumn("TestDropCol", "to remove");
+ // Verify column no longer exists
+ var infoAfter = connection.GetTableInfo("TestDropCol");
+ Assert.IsFalse(infoAfter.Any(p => p.Name == "to remove"));
 
-        public void DropConnection_ShouldDropConnectionBetweenTables()
-        {
-            EnsureNativeLibraryAvailable();
-            using var connection = _database!.Connect();
-            // Create two node tables
-            connection.NonQuery("CREATE NODE TABLE NodeX(id INT64, PRIMARY KEY(id));");
-            connection.NonQuery("CREATE NODE TABLE NodeY(id INT64, PRIMARY KEY(id));");
-            // Create a relationship table between them
-            connection.NonQuery("CREATE REL TABLE RelXY(FROM NodeX TO NodeY, since INT64);");
-            // Add connection in reverse direction
-            connection.AddConnection("RelXY", "NodeY", "NodeX");
-            // Verify connection exists
-            var connections = connection.GetConnections("RelXY");
-            Assert.IsTrue(connections.Any(c => c.SourceTable == "NodeX" && c.TargetTable == "NodeY"));
-            // The added connection in reverse
-            Assert.IsTrue(connections.Any(c => c.SourceTable == "NodeY" && c.TargetTable == "NodeX"));
+ connection.DropColumnIfExists("TestDropCol", "non existent column"); // Should not throw
+ }
 
-            // Drop the added connection
-            connection.DropConnection("RelXY", "NodeY", "NodeX");
-            // Verify connection no longer exists
-            var updatedConnections = connection.GetConnections("RelXY");
-            Assert.IsFalse(updatedConnections.Any(c => c.SourceTable == "NodeY" && c.TargetTable == "NodeX"));
-        }
+ #endregion
 
-        #endregion
+ #region SpecialCharacters_Support
 
-        #region Rename Operations
+ [TestMethod]
+ public void CreateNodeTable_WithSpecialCharacters_ShouldSucceed()
+ {
+ EnsureNativeLibraryAvailable();
+ using var connection = _database!.Connect();
 
-        [TestMethod]
-        public void RenameColumn_ShouldRenameColumnSuccessfully()
-        {
-            EnsureNativeLibraryAvailable();
-            using var connection = _database!.Connect();
-            // Create a node table with a column
-            connection.NonQuery("CREATE NODE TABLE RenameColTest(id INT64, oldname STRING, PRIMARY KEY(id));");
-            // Rename the column
-            connection.RenameColumn("RenameColTest", "oldname", "newname");
-            // Verify new column exists, old does not
-            var info = connection.GetTableInfo("RenameColTest");
-            Assert.IsTrue(info.Any(p => p.Name == "newname"));
-            Assert.IsFalse(info.Any(p => p.Name == "oldname"));
-        }
+ var label = "My Table"; // contains space -> should be escaped
+ var ok = connection.CreateNodeTable(label, new[] { new SchemaProperty { Name = "id", Type = "INT64", IsPrimaryKey = true } });
+ Assert.IsTrue(ok, "CreateNodeTable should return true");
 
-        [TestMethod]
-        public void RenameTable_ShouldRenameTableSuccessfully()
-        {
-            EnsureNativeLibraryAvailable();
-            using var connection = _database!.Connect();
-            // Create a node table
-            connection.NonQuery("CREATE NODE TABLE OldTableName(id INT64, PRIMARY KEY(id));");
-            // Rename the table
-            connection.RenameTable("OldTableName", "NewTableName");
-            // Verify new table exists, old does not
-            var tables = connection.GetTables();
-            Assert.IsTrue(tables.Any(t => t.Name == "NewTableName"));
-            Assert.IsFalse(tables.Any(t => t.Name == "OldTableName"));
-        }
+ var tables = connection.GetTables();
+ Assert.IsTrue(tables.Any(t => t.Name == label));
+ }
 
-        #endregion
-    }
+ [TestMethod]
+ public void CreateRelTable_WithSpecialCharacters_ShouldSucceed()
+ {
+ EnsureNativeLibraryAvailable();
+ using var connection = _database!.Connect();
+
+ // Create node tables with special names
+ connection.CreateNodeTable("Person A", [new SchemaProperty { Name = "id", Type = "INT64", IsPrimaryKey = true }]);
+ connection.CreateNodeTable("Company-B", [new SchemaProperty { Name = "id", Type = "INT64", IsPrimaryKey = true }]);
+
+ var relLabel = "Works At";
+ var ok = connection.CreateRelTable(relLabel, "Person A", "Company-B");
+ Assert.IsTrue(ok);
+
+ var relTables = connection.GetRelTables();
+ Assert.IsTrue(relTables.Any(t => t.Name == relLabel));
+ }
+
+ [TestMethod]
+ public void AddConnection_WithSpecialCharacters_ShouldSucceed()
+ {
+ EnsureNativeLibraryAvailable();
+ using var connection = _database!.Connect();
+
+ connection.CreateNodeTable("Node One", [new SchemaProperty { Name = "id", Type = "INT64", IsPrimaryKey = true }]);
+ connection.CreateNodeTable("Node Two", [new SchemaProperty { Name = "id", Type = "INT64", IsPrimaryKey = true }]);
+ connection.CreateRelTable("Rel Space", "Node One", "Node Two");
+
+ // Add connection using special-named nodes
+ connection.AddConnection("Rel Space", "Node Two", "Node One");
+
+ var conns = connection.GetConnections("Rel Space");
+ Assert.IsTrue(conns.Any(c => c.SourceTable == "Node One" && c.TargetTable == "Node Two") || conns.Any(c => c.SourceTable == "Node Two" && c.TargetTable == "Node One"));
+ }
+
+ [TestMethod]
+ public void AddConnectionIfNotExists_WithSpecialCharacters_ShouldNotThrow()
+ {
+ EnsureNativeLibraryAvailable();
+ using var connection = _database!.Connect();
+
+ connection.CreateNodeTable("From Node", [new SchemaProperty { Name = "id", Type = "INT64", IsPrimaryKey = true }]);
+ connection.CreateNodeTable("To Node", [new SchemaProperty { Name = "id", Type = "INT64", IsPrimaryKey = true }]);
+ connection.CreateRelTable("Rel-Complex", "From Node", "To Node");
+
+ // Should not throw
+ connection.AddConnectionIfNotExists("Rel-Complex", "From Node", "To Node");
+ connection.AddConnectionIfNotExists("Rel-Complex", "From Node", "To Node");
+
+ var conns = connection.GetConnections("Rel-Complex");
+ Assert.IsTrue(conns.Count >=1);
+ }
+
+ [TestMethod]
+ public void CommentOnTable_WithSpecialCharacters_ShouldSetComment()
+ {
+ EnsureNativeLibraryAvailable();
+ using var connection = _database!.Connect();
+
+ var label = "Table With Space";
+ connection.CreateNodeTable(label, [new SchemaProperty { Name = "id", Type = "INT64", IsPrimaryKey = true }]);
+
+ connection.CommentOnTable(label, "This is a comment");
+
+ var tables = connection.GetTables();
+ var t = tables.FirstOrDefault(x => x.Name == label);
+ Assert.IsNotNull(t);
+ Assert.AreEqual("This is a comment", t!.Comment);
+ }
+
+ [TestMethod]
+ public void RenameTable_WithSpecialCharacters_ShouldSucceed()
+ {
+ EnsureNativeLibraryAvailable();
+ using var connection = _database!.Connect();
+
+ var oldName = "Old Name";
+ var newName = "New Name";
+ connection.CreateNodeTable(oldName, [new SchemaProperty { Name = "id", Type = "INT64", IsPrimaryKey = true }]);
+
+ connection.RenameTable(oldName, newName);
+
+ var tables = connection.GetTables();
+ Assert.IsTrue(tables.Any(t => t.Name == newName));
+ Assert.IsFalse(tables.Any(t => t.Name == oldName));
+ }
+
+ #endregion
+
+ #region Connection Operations
+
+ [TestMethod]
+ public void ShowConnections_ShouldReturnRelationshipConnections()
+ {
+ EnsureNativeLibraryAvailable();
+ using var connection = _database!.Connect();
+ // Create two node tables
+ connection.NonQuery("CREATE NODE TABLE NodeA(id INT64, PRIMARY KEY(id));");
+ connection.NonQuery("CREATE NODE TABLE NodeB(id INT64, PRIMARY KEY(id));");
+ // Create a relationship table between them
+ connection.NonQuery("CREATE REL TABLE RelAB(FROM NodeA TO NodeB, since INT64);");
+ // Show connections
+ var connections = connection.GetConnections("RelAB");
+ Assert.IsNotNull(connections);
+ Assert.IsTrue(connections.Any(c => c.SourceTable == "NodeA" && c.TargetTable == "NodeB"));
+ }
+
+ public void AddConnection_ShouldCreateConnectionBetweenTables()
+ {
+ EnsureNativeLibraryAvailable();
+ using var connection = _database!.Connect();
+ // Create two node tables
+ connection.NonQuery("CREATE NODE TABLE NodeX(id INT64, PRIMARY KEY(id));");
+ connection.NonQuery("CREATE NODE TABLE NodeY(id INT64, PRIMARY KEY(id));");
+ // Create a relationship table between them
+ connection.NonQuery("CREATE REL TABLE RelXY(FROM NodeX TO NodeY, since INT64);");
+ // Add connection in reverse direction
+ connection.AddConnection("RelXY", "NodeY", "NodeX");
+ // Verify connection exists
+ var connections = connection.GetConnections("RelXY");
+ Assert.IsTrue(connections.Any(c => c.SourceTable == "NodeX" && c.TargetTable == "NodeY"));
+ // The added connection in reverse
+ Assert.IsTrue(connections.Any(c => c.SourceTable == "NodeY" && c.TargetTable == "NodeX"));
+ }
+
+ public void DropConnection_ShouldDropConnectionBetweenTables()
+ {
+ EnsureNativeLibraryAvailable();
+ using var connection = _database!.Connect();
+ // Create two node tables
+ connection.NonQuery("CREATE NODE TABLE NodeX(id INT64, PRIMARY KEY(id));");
+ connection.NonQuery("CREATE NODE TABLE NodeY(id INT64, PRIMARY KEY(id));");
+ // Create a relationship table between them
+ connection.NonQuery("CREATE REL TABLE RelXY(FROM NodeX TO NodeY, since INT64);");
+ // Add connection in reverse direction
+ connection.AddConnection("RelXY", "NodeY", "NodeX");
+ // Verify connection exists
+ var connections = connection.GetConnections("RelXY");
+ Assert.IsTrue(connections.Any(c => c.SourceTable == "NodeX" && c.TargetTable == "NodeY"));
+ // The added connection in reverse
+ Assert.IsTrue(connections.Any(c => c.SourceTable == "NodeY" && c.TargetTable == "NodeX"));
+
+ // Drop the added connection
+ connection.DropConnection("RelXY", "NodeY", "NodeX");
+ // Verify connection no longer exists
+ var updatedConnections = connection.GetConnections("RelXY");
+ Assert.IsFalse(updatedConnections.Any(c => c.SourceTable == "NodeY" && c.TargetTable == "NodeX"));
+ }
+
+ #endregion
+
+ #region Rename Operations
+
+ [TestMethod]
+ public void RenameColumn_ShouldRenameColumnSuccessfully()
+ {
+ EnsureNativeLibraryAvailable();
+ using var connection = _database!.Connect();
+ // Create a node table with a column
+ connection.NonQuery("CREATE NODE TABLE RenameColTest(id INT64, oldname STRING, PRIMARY KEY(id));");
+ // Rename the column
+ connection.RenameColumn("RenameColTest", "oldname", "newname");
+ // Verify new column exists, old does not
+ var info = connection.GetTableInfo("RenameColTest");
+ Assert.IsTrue(info.Any(p => p.Name == "newname"));
+ Assert.IsFalse(info.Any(p => p.Name == "oldname"));
+ }
+
+ [TestMethod]
+ public void RenameTable_ShouldRenameTableSuccessfully()
+ {
+ EnsureNativeLibraryAvailable();
+ using var connection = _database!.Connect();
+ // Create a node table
+ connection.NonQuery("CREATE NODE TABLE OldTableName(id INT64, PRIMARY KEY(id));");
+ // Rename the table
+ connection.RenameTable("OldTableName", "NewTableName");
+ // Verify new table exists, old does not
+ var tables = connection.GetTables();
+ Assert.IsTrue(tables.Any(t => t.Name == "NewTableName"));
+ Assert.IsFalse(tables.Any(t => t.Name == "OldTableName"));
+ }
+
+ #endregion
+ }
 }

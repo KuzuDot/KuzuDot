@@ -53,11 +53,7 @@ namespace KuzuDot.Utils
         internal static void StringContainsNull(string? value, string v)
         {
             var hasNull =
-#if NET8_0_OR_GREATER
                 value!.Contains('\0', StringComparison.Ordinal);
-#else
-                value!.IndexOf('\0') >= 0;
-#endif
             if (hasNull)
                 throw new ArgumentException($"String parameter '{v}' contains null character(s)", v);
         }

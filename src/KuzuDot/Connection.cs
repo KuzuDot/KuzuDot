@@ -18,6 +18,7 @@ namespace KuzuDot
     /// </summary>
     public sealed class Connection : IDisposable
     {
+        private const string Backtick = "`";
         private readonly ConnectionSafeHandle _handle;
 
         /// <summary>
@@ -100,10 +101,31 @@ namespace KuzuDot
             KuzuGuard.NotNullOrEmpty(label, nameof(label));
             KuzuGuard.NotNullOrEmpty(from, nameof(from));
             KuzuGuard.NotNullOrEmpty(to, nameof(to));
-            var query = $"ALTER TABLE {label} ADD FROM {from} TO {to};";
+
+            var query = $"ALTER TABLE {EscapeLabel(label)} ADD FROM {EscapeLabel(from)} TO {EscapeLabel(to)};";
             using var result = Query(query);
             if (!result.IsSuccess)
                 throw new KuzuException($"Failed to add connection on rel table '{label}': {result.ErrorMessage}");
+        }
+
+        /// <summary>
+        /// If a label or column name contains special characters, escape it for use in queries.
+        /// </summary>
+        /// <param name="label"></param>
+        /// <returns></returns>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1310:Specify StringComparison for correctness", Justification = "<Pending>")]
+        public static string EscapeLabel(string label)
+        {
+            KuzuGuard.NotNullOrEmpty(label, nameof(label));
+            // If already escaped, return as-is
+            if (label!.Length > 1 && label.StartsWith(Backtick) && label.EndsWith(Backtick))
+                return label;
+            // Escape if contains special characters
+            if (label.Contains(Backtick, StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException("Label cannot contain backtick (`) character", nameof(label));
+            if (label.Any(c => !char.IsLetterOrDigit(c) && c != '_'))
+                return Backtick + label + Backtick;
+            return label;
         }
 
         /// <summary>
@@ -119,7 +141,7 @@ namespace KuzuDot
             KuzuGuard.NotNullOrEmpty(label, nameof(label));
             KuzuGuard.NotNullOrEmpty(from, nameof(from));
             KuzuGuard.NotNullOrEmpty(to, nameof(to));
-            var query = $"ALTER TABLE {label} ADD IF NOT EXISTS FROM {from} TO {to};";
+            var query = $"ALTER TABLE {EscapeLabel(label)} ADD IF NOT EXISTS FROM {EscapeLabel(from)} TO {EscapeLabel(to)};";
             using var result = Query(query);
             if (!result.IsSuccess)
                 throw new KuzuException($"Failed to add connection on rel table '{label}': {result.ErrorMessage}");
@@ -132,7 +154,7 @@ namespace KuzuDot
         public void CommentOnTable(string tableName, string comment)
         {
             KuzuGuard.NotNullOrEmpty(tableName, nameof(tableName));
-            var query = $"COMMENT ON TABLE {tableName} IS '{comment}';";
+            var query = $"COMMENT ON TABLE {EscapeLabel(tableName)} IS '{comment}';";
             using var result = Query(query);
             if (!result.IsSuccess)
                 throw new KuzuException($"Failed to set comment on table '{tableName}': {result.ErrorMessage}");
@@ -142,16 +164,21 @@ namespace KuzuDot
         {
             NotDisposed();
             KuzuGuard.NotNullOrEmpty(label, nameof(label));
-            var propsString = "";
-            if (properties != null && properties.Any())
-            {
-                var propsList = properties.Select(kv => $"{kv.Name} {kv.Type}"
-                                                      + (!string.IsNullOrEmpty(kv.DefaultExpression)
-                                                        ? $" DEFAULT {kv.DefaultExpression}" : "")
-                                                      + (kv.IsPrimaryKey ? " PRIMARY KEY" : ""));
-                propsString = "{" + string.Join(", ", propsList) + "}";
-            }
-            var query = $"CREATE NODE TABLE {label}({propsString});";
+
+            // Avoid multiple enumeration by materializing to a list
+            var props = properties?.ToList();
+
+            // Require at least one primary key property for node tables
+            if (props == null || !props.Any(p => p.IsPrimaryKey))
+                throw new ArgumentException("Node table must define at least one property with IsPrimaryKey = true.", nameof(properties));
+
+            var propsList = props.Select(kv => $"{EscapeLabel(kv.Name)} {kv.Type}"
+                                                + (!string.IsNullOrEmpty(kv.DefaultExpression)
+                                                ? $" DEFAULT {kv.DefaultExpression}" : "")
+                                                + (kv.IsPrimaryKey ? " PRIMARY KEY" : "")).ToList();
+            var propsString = propsList.Count > 1 ? "{" + string.Join(", ", propsList) + "}" : propsList.First();
+
+            var query = $"CREATE NODE TABLE {EscapeLabel(label)}({propsString});";
             using var result = Query(query);
             return result.IsSuccess;
         }
@@ -162,16 +189,18 @@ namespace KuzuDot
             KuzuGuard.NotNullOrEmpty(label, nameof(label));
             KuzuGuard.NotNullOrEmpty(from, nameof(from));
             KuzuGuard.NotNullOrEmpty(to, nameof(to));
+
+            var props = properties?.ToList();
             var propsString = "";
-            if (properties != null && properties.Any())
+            if (props != null && props.Count > 0)
             {
-                var propsList = properties.Select(kv => $"{kv.Name} {kv.Type}"
-                                                      + (!string.IsNullOrEmpty(kv.DefaultExpression)
-                                                        ? $" DEFAULT {kv.DefaultExpression}" : "")
-                                                 );
-                propsString = "{" + string.Join(", ", propsList) + "}";
+                var propsList = props.Select(kv => $"{EscapeLabel(kv.Name)} {kv.Type}"
+                                                 + (!string.IsNullOrEmpty(kv.DefaultExpression)
+                                                 ? $" DEFAULT {kv.DefaultExpression}" : "")
+                                            ).ToList();
+                propsString = ", " + (propsList.Count == 1 ? propsList.First() : "{" + string.Join(", ", propsList) + "}");
             }
-            var query = $"CREATE REL TABLE {label}(FROM {from} TO {to}, {propsString});";
+            var query = $"CREATE REL TABLE {EscapeLabel(label)}(FROM {EscapeLabel(from)} TO {EscapeLabel(to)}{propsString});";
             using var result = Query(query);
             return result.IsSuccess;
         }
@@ -196,7 +225,7 @@ namespace KuzuDot
             NotDisposed();
             KuzuGuard.NotNullOrEmpty(tableName, nameof(tableName));
             KuzuGuard.NotNull(columnName, nameof(columnName));
-            var query = $"ALTER TABLE {tableName} DROP {columnName};";
+            var query = $"ALTER TABLE {EscapeLabel(tableName)} DROP {EscapeLabel(columnName)};";
             using var result = Query(query);
             if (!result.IsSuccess)
                 throw new KuzuException($"Failed to drop column '{columnName}' from table '{tableName}': {result.ErrorMessage}");
@@ -213,7 +242,7 @@ namespace KuzuDot
             NotDisposed();
             KuzuGuard.NotNullOrEmpty(tableName, nameof(tableName));
             KuzuGuard.NotNull(columnName, nameof(columnName));
-            var query = $"ALTER TABLE {tableName} DROP IF EXISTS {columnName};";
+            var query = $"ALTER TABLE {EscapeLabel(tableName)} DROP IF EXISTS {EscapeLabel(columnName)};";
             using var result = Query(query);
             if (!result.IsSuccess)
                 throw new KuzuException($"Failed to drop column '{columnName}' from table '{tableName}': {result.ErrorMessage}");
@@ -231,7 +260,7 @@ namespace KuzuDot
             KuzuGuard.NotNullOrEmpty(label, nameof(label));
             KuzuGuard.NotNullOrEmpty(from, nameof(from));
             KuzuGuard.NotNullOrEmpty(to, nameof(to));
-            var query = $"ALTER TABLE {label} DROP FROM {from} TO {to};";
+            var query = $"ALTER TABLE {EscapeLabel(label)} DROP FROM {EscapeLabel(from)} TO {EscapeLabel(to)};";
             using var result = Query(query);
             if (!result.IsSuccess)
                 throw new KuzuException($"Failed to drop connection on rel table '{label}': {result.ErrorMessage}");
@@ -817,7 +846,7 @@ namespace KuzuDot
         {
             KuzuGuard.NotNullOrEmpty(oldName, nameof(oldName));
             KuzuGuard.NotNullOrEmpty(newName, nameof(newName));
-            var query = $"ALTER TABLE {oldName} RENAME TO {newName};";
+            var query = $"ALTER TABLE {EscapeLabel(oldName)} RENAME TO {EscapeLabel(newName)};";
             using var result = Query(query);
             if (!result.IsSuccess)
                 throw new KuzuException($"Failed to rename table '{oldName}' to '{newName}': {result.ErrorMessage}");
@@ -943,7 +972,8 @@ namespace KuzuDot
                     Id = row.GetValueAs<ulong>(0),
                     Name = row.GetValueAs<string>(1),
                     Type = row.GetValueAs<string>(2),
-                    Comment = row.GetValueAs<string>(3)
+                    DatabaseName = row.GetValueAs<string>(3),
+                    Comment = row.GetValueAs<string>(4)
                 });
             }
 
@@ -976,9 +1006,9 @@ namespace KuzuDot
             NotDisposed();
             KuzuGuard.NotNullOrEmpty(tableName, nameof(tableName));
             KuzuGuard.NotNull(columName, nameof(columName));
-            var query = $"ALTER TABLE {tableName} ADD "
+            var query = $"ALTER TABLE {EscapeLabel(tableName)} ADD "
                         + (ifNotExists ? "IF NOT EXISTS " : "")
-                        + $"{columName} {DataType.GetNameFromType(typeId)}"
+                        + $"{EscapeLabel(columName)} {DataType.GetNameFromType(typeId)}"
                         + (!string.IsNullOrEmpty(defaultExpression)
                             ? $" DEFAULT {defaultExpression};" : ";");
             using var result = Query(query);
